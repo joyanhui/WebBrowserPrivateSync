@@ -1,238 +1,214 @@
-// 获取指定文件夹中的书签
-async function getAllBookmarks() {
-    const config = await chrome.storage.sync.get('bookmarkConfig');
-    const bookmarkPath = config.bookmarkConfig?.path || '/Bookmarks bar/';
+// 格式化书签数据
+function formatBookmarkData(node) {
+    if (!node) return null;
+    
+    const result = {
+        title: node.title,
+        url: node.url,
+        dateAdded: node.dateAdded,
+        id: node.id
+    };
 
-    return new Promise((resolve) => {
-        chrome.bookmarks.getTree(async function(bookmarkTreeNodes) {
-            // 根据路径查找指定文件夹
-            function findFolderByPath(nodes, path) {
-                const parts = path.split('/').filter(p => p);
-                
-                // 从根节点开始查找
-                let current = nodes[0]; // 获取第一个根节点
+    if (node.children) {
+        result.children = node.children.map(child => formatBookmarkData(child))
+            .filter(item => item !== null);
+    }
 
-                // 遍历路径的每一部分
-                for (const part of parts) {
-                    if (!current || !current.children) {
-                        console.log('Path part not found:', part);
-                        return null;
-                    }
+    return result;
+}
 
-                    // 在当前层级的children中查找匹配的文件夹
-                    current = current.children.find(node => node.title === part);
-                    
-                    if (!current) {
-                        console.log('Folder not found:', part);
-                        return null;
-                    }
-                }
+// 上传书签到WebDAV
+async function uploadBookmarks(bookmarkFolder) {
+    const config = await chrome.storage.sync.get(['webdavConfig', 'bookmarkConfig']);
+    const { url, username, password, enable_aes, aes_key } = config.webdavConfig;
+    const { database_filename, auto_backup } = config.bookmarkConfig;
 
-                return current;
-            }
+    if (!url || !username || !password) {
+        throw new Error('WebDAV配置不完整，请在设置中配置WebDAV信息');
+    }
 
-            // 将书签数据转换为适合导出的格式
-            function formatBookmarkData(node) {
-                if (!node) return null;
-                
-                const result = {
-                    title: node.title,
-                    url: node.url,
-                    dateAdded: node.dateAdded,
-                    id: node.id
-                };
+    // 格式化书签数据
+    const bookmarksData = formatBookmarkData(bookmarkFolder);
+    
+    // 准备要上传的数据
+    let uploadData;
+    if (enable_aes && aes_key) {
+        // 加密数据
+        const jsonStr = JSON.stringify(bookmarksData);
+        uploadData = CryptoJS.AES.encrypt(jsonStr, aes_key).toString();
+    } else {
+        uploadData = JSON.stringify(bookmarksData, null, 2);
+    }
 
-                if (node.children) {
-                    result.children = node.children.map(child => formatBookmarkData(child))
-                        .filter(item => item !== null);
-                }
-
-                return result;
-            }
-
-            // 添加调试日志
-            console.log('Looking for path:', bookmarkPath);
-            console.log('Bookmark tree:', bookmarkTreeNodes);
-
-            const targetFolder = findFolderByPath(bookmarkTreeNodes, bookmarkPath);
-            
-            // 添加调试日志
-            console.log('Found folder:', targetFolder);
-
-            if (targetFolder) {
-                const formattedData = formatBookmarkData(targetFolder);
-                resolve(formattedData);
-            } else {
-                console.warn('Bookmark folder not found:', bookmarkPath);
-                resolve(null);
-            }
-        });
+    // 确保URL以/结尾
+    const baseUrl = url.endsWith('/') ? url : url + '/';
+    
+    // 上传主文件
+    const response = await fetch(baseUrl + database_filename, {
+        method: 'PUT',
+        headers: {
+            'Authorization': 'Basic ' + btoa(username + ':' + password),
+            'Content-Type': 'application/json'
+        },
+        body: uploadData
     });
-}
 
-// 上传到WebDAV
-async function uploadToWebDAV(bookmarksData) {
-    try {
-        // 从storage中获取WebDAV配置
-        const data = await chrome.storage.sync.get('webdavConfig');
-        const config = data.webdavConfig;
+    if (!response.ok) {
+        throw new Error(`上传失败: ${response.status} ${response.statusText}`);
+    }
+
+    // 如果启用了自动备份，创建备份文件
+    if (auto_backup) {
+        const date = new Date().toISOString().split('T')[0];
+        const backupFilename = database_filename.replace('.json', '') + '.backup.' + date + '.json';
         
-        if (!config || !config.url || !config.username || !config.password) {
-            throw new Error('WebDAV配置不完整，请在设置中配置WebDAV信息');
-        }
-
-        // 确保URL以/结尾
-        const baseUrl = config.url.endsWith('/') ? config.url : config.url + '/';
-        const url = baseUrl + 'bookmarks.json';
-
-        const headers = new Headers({
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-        });
-
-        const response = await fetch(url, {
+        const backupResponse = await fetch(baseUrl + backupFilename, {
             method: 'PUT',
-            headers: headers,
-            body: JSON.stringify(bookmarksData, null, 2),
-            mode: 'cors',
-            credentials: 'include'
+            headers: {
+                'Authorization': 'Basic ' + btoa(username + ':' + password),
+                'Content-Type': 'application/json'
+            },
+            body: uploadData
         });
 
-        if (response.ok) {
-            showStatus('书签已成功上传到WebDAV', 'success');
-        } else {
-            throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
-        }
-    } catch (error) {
-        console.error('上传错误:', error);
-        if (error.message.includes('Failed to fetch')) {
-            showStatus('连接WebDAV服务器失败，请检查：\n1. WebDAV地址是否正确\n2. 用户名密码是否正确\n3. 服务器是否允许跨域访问', 'danger');
-        } else {
-            showStatus('上传错误: ' + error.message, 'danger');
+        if (!backupResponse.ok) {
+            console.warn('创建备份失败:', backupResponse.statusText);
         }
     }
-}
-
-// 显示状态信息
-function showStatus(message, type) {
-    const statusDiv = document.getElementById('status');
-    statusDiv.textContent = message;
-    statusDiv.className = `alert alert-${type}`;
-    statusDiv.style.display = 'block';
-    
-    // 如果是错误消息，保持显示
-    if (type !== 'success') {
-        return;
-    }
-    
-    // 如果是成功消息，3秒后自动隐藏
-    setTimeout(() => {
-        statusDiv.style.display = 'none';
-    }, 3000);
 }
 
 // 从WebDAV下载书签
-async function downloadFromWebDAV() {
+async function downloadBookmarks() {
+    const config = await chrome.storage.sync.get(['webdavConfig', 'bookmarkConfig']);
+    const { url, username, password, enable_aes, aes_key } = config.webdavConfig;
+    const { database_filename } = config.bookmarkConfig;
+
+    if (!url || !username || !password) {
+        throw new Error('WebDAV配置不完整，请在设置中配置WebDAV信息');
+    }
+
+    // 确保URL以/结尾
+    const baseUrl = url.endsWith('/') ? url : url + '/';
+    
+    // 下载文件
+    const response = await fetch(baseUrl + database_filename, {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Basic ' + btoa(username + ':' + password)
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`下载失败: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.text();
+    
     try {
-        const data = await chrome.storage.sync.get('webdavConfig');
-        const config = data.webdavConfig;
-        
-        if (!config || !config.url || !config.username || !config.password) {
-            throw new Error('WebDAV配置不完整，请在设置中配置WebDAV信息');
-        }
-
-        // 确保URL以/结尾
-        const baseUrl = config.url.endsWith('/') ? config.url : config.url + '/';
-        const url = baseUrl + 'bookmarks.json';
-
-        console.log('开始从WebDAV下载书签:', url);
-
-        const headers = new Headers({
-            'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-        });
-
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: headers,
-            mode: 'cors',
-            credentials: 'include'
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
-        }
-
-        const bookmarksData = await response.json();
-        
-        // 验证数据格式
-        if (!bookmarksData) {
-            throw new Error('从WebDAV获取的书签数据为空');
-        }
-
-        console.log('成功获取书签数据:', bookmarksData);
-
-        // 验证数据结构
-        if (!bookmarksData.children && !bookmarksData.url && !bookmarksData.title) {
-            throw new Error('无效的书签数据格式');
-        }
-
-        await importBookmarks(bookmarksData);
-        showStatus('书签已成功从WebDAV导入', 'success');
-    } catch (error) {
-        console.error('下载错误:', error);
-        if (error.message.includes('Failed to fetch')) {
-            showStatus('连接WebDAV服务器失败，请检查：\n1. WebDAV地址是否正确\n2. 用户名密码是否正确\n3. 服务器是否允许跨域访问', 'danger');
+        if (enable_aes && aes_key) {
+            // 解密数据
+            const decrypted = CryptoJS.AES.decrypt(data, aes_key);
+            const jsonStr = decrypted.toString(CryptoJS.enc.Utf8);
+            if (!jsonStr) {
+                throw new Error('解密失败：密钥错误或数据已损坏');
+            }
+            return JSON.parse(jsonStr);
         } else {
-            showStatus('下载错误: ' + error.message, 'danger');
+            return JSON.parse(data);
         }
-        throw error; // 继续抛出错误，让调用者知道发生了错误
+    } catch (error) {
+        throw new Error('解析书签数据失败: ' + error.message);
     }
 }
 
-// 导入书签到本地
-async function importBookmarks(bookmarksData) {
-    if (!bookmarksData) {
-        throw new Error('书签数据为空');
+// 根据路径查找书签文件夹
+async function findBookmarkFolder(path) {
+    const tree = await chrome.bookmarks.getTree();
+    const parts = path.split('/').filter(p => p); // 移除空字符串
+    let current = tree[0];
+
+    for (const part of parts) {
+        const found = current.children?.find(node => node.title === part);
+        if (!found) {
+            throw new Error(`找不到书签文件夹: ${path}`);
+        }
+        current = found;
     }
+    return current;
+}
 
-    console.log('开始导入书签数据:', bookmarksData);
+// 导出书签到WebDAV
+async function exportBookmarks() {
+    try {
+        showStatus('正在导出书签...', 'info');
+        
+        // 获取配置的同步路径
+        const config = await chrome.storage.sync.get(['bookmarkConfig']);
+        if (!config.bookmarkConfig?.sync_path) {
+            throw new Error('未配置同步路径');
+        }
 
-    const config = await chrome.storage.sync.get('bookmarkConfig');
-    const targetPath = config.bookmarkConfig?.path || '/Bookmarks bar/';
-    
-    console.log('目标路径:', targetPath);
-    
-    // 获取目标文件夹ID
-    const targetFolderId = await getOrCreateFolderByPath(targetPath);
-    if (!targetFolderId) {
-        throw new Error('无法创建或找到目标文件夹');
+        // 查找指定路径的书签文件夹
+        const bookmarkFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
+        
+        // 上传到WebDAV
+        await uploadBookmarks(bookmarkFolder);
+        
+        showStatus('书签导出成功', 'success');
+    } catch (error) {
+        console.error('导出书签失败:', error);
+        showStatus('导出失败: ' + error.message, 'danger');
     }
+}
 
-    console.log('目标文件夹ID:', targetFolderId);
+// 从WebDAV导入书签
+async function importBookmarks() {
+    try {
+        showStatus('正在导入书签...', 'info');
+        
+        // 获取配置的同步路径
+        const config = await chrome.storage.sync.get(['bookmarkConfig']);
+        if (!config.bookmarkConfig?.sync_path) {
+            throw new Error('未配置同步路径');
+        }
+
+        // 查找指定路径的书签文件夹
+        const targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
+        
+        // 从WebDAV下载书签
+        const bookmarks = await downloadBookmarks();
+        
+        // 导入书签到指定文件夹
+        await importToFolder(bookmarks, targetFolder.id);
+        
+        showStatus('书签导入成功', 'success');
+    } catch (error) {
+        console.error('导入书签失败:', error);
+        showStatus('导入失败: ' + error.message, 'danger');
+    }
+}
+
+// 导入书签到指定文件夹
+async function importToFolder(bookmarks, folderId) {
+    // 清空目标文件夹
+    const children = await chrome.bookmarks.getChildren(folderId);
+    for (const child of children) {
+        await chrome.bookmarks.removeTree(child.id);
+    }
 
     // 递归创建书签
     async function createBookmarkRecursive(data, parentId) {
-        if (!data) {
-            console.warn('跳过空的书签数据');
-            return;
-        }
-
-        console.log('处理书签数据:', data);
+        if (!data) return;
 
         if (data.url) {
             // 创建书签
-            console.log('创建书签:', data.title, data.url);
             await chrome.bookmarks.create({
                 parentId: parentId,
                 title: data.title || '未命名书签',
                 url: data.url
             });
-        } else if (data.children && Array.isArray(data.children)) {
+        } else if (data.children) {
             // 创建文件夹
-            console.log('创建文件夹:', data.title);
             const folder = await chrome.bookmarks.create({
                 parentId: parentId,
                 title: data.title || '未命名文件夹'
@@ -242,116 +218,21 @@ async function importBookmarks(bookmarksData) {
             for (const child of data.children) {
                 await createBookmarkRecursive(child, folder.id);
             }
-        } else {
-            console.warn('跳过无效的书签数据:', data);
         }
     }
 
-    try {
-        // 清空目标文件夹
-        console.log('清空目标文件夹');
-        const children = await chrome.bookmarks.getChildren(targetFolderId);
-        for (const child of children) {
-            await chrome.bookmarks.removeTree(child.id);
+    // 导入书签
+    if (bookmarks.children) {
+        for (const child of bookmarks.children) {
+            await createBookmarkRecursive(child, folderId);
         }
-
-        // 导入新的书签
-        if (bookmarksData.children && Array.isArray(bookmarksData.children)) {
-            console.log('开始导入子项，数量:', bookmarksData.children.length);
-            for (const child of bookmarksData.children) {
-                await createBookmarkRecursive(child, targetFolderId);
-            }
-        } else if (bookmarksData.url || bookmarksData.title) {
-            // 处理单个书签或文件夹的情况
-            console.log('导入单个书签或文件夹');
-            await createBookmarkRecursive(bookmarksData, targetFolderId);
-        } else {
-            throw new Error('无效的书签数据格式');
-        }
-    } catch (error) {
-        console.error('导入过程中出错:', error);
-        throw error;
+    } else {
+        await createBookmarkRecursive(bookmarks, folderId);
     }
 }
 
-// 根据路径获取或创建文件夹
-async function getOrCreateFolderByPath(path) {
-    const parts = path.split('/').filter(p => p);
-    
-    // 获取书签树
-    const tree = await chrome.bookmarks.getTree();
-    let current = tree[0]; // 根节点
+// 监听导出事件
+document.addEventListener('bookmarkExport', exportBookmarks);
 
-    // 遍历路径的每一部分
-    for (const part of parts) {
-        // 在当前层级查找匹配的文件夹
-        let found = false;
-        if (current.children) {
-            for (const child of current.children) {
-                if (child.title === part) {
-                    current = child;
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        // 如果没找到，创建新文件夹
-        if (!found) {
-            current = await chrome.bookmarks.create({
-                parentId: current.id,
-                title: part
-            });
-        }
-    }
-
-    return current.id;
-}
-
-// 添加事件监听器
-document.addEventListener('DOMContentLoaded', () => {
-    // 导出按钮
-    document.getElementById('exportBtn').addEventListener('click', async () => {
-        const btn = document.getElementById('exportBtn');
-        try {
-            btn.disabled = true;
-            btn.querySelector('.sync-direction').textContent = '正在导出...';
-            
-            const bookmarks = await getAllBookmarks();
-            if (!bookmarks) {
-                throw new Error('未找到书签文件夹');
-            }
-            await uploadToWebDAV(bookmarks);
-        } catch (error) {
-            console.error('导出失败:', error);
-            showStatus('导出失败: ' + error.message, 'danger');
-        } finally {
-            btn.disabled = false;
-            btn.querySelector('.sync-direction').textContent = '本地 → WebDAV';
-        }
-    });
-
-    // 导入按钮
-    document.getElementById('importBtn').addEventListener('click', async () => {
-        const btn = document.getElementById('importBtn');
-        try {
-            if (!confirm('这将覆盖本地对应文件夹中的所有书签，确定要继续吗？')) {
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.querySelector('.sync-direction').textContent = '正在导入...';
-            
-            await downloadFromWebDAV();
-        } catch (error) {
-            console.error('导入失败:', error);
-            // downloadFromWebDAV 已经处理了状态显示，这里不需要重复
-        } finally {
-            btn.disabled = false;
-            btn.querySelector('.sync-direction').textContent = 'WebDAV → 本地';
-        }
-    });
-
-    // 加载同步路径
-    loadSyncPath();
-});
+// 监听导入事件
+document.addEventListener('bookmarkImport', importBookmarks);

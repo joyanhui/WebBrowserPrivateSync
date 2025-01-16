@@ -3,19 +3,43 @@ function save_options() {
     const webdav_url = document.getElementById('webdav_url').value;
     const webdav_username = document.getElementById('webdav_username').value;
     const webdav_password = document.getElementById('webdav_password').value;
-    const bookmarkPath = document.getElementById('selected-path').textContent.trim();
+    const enable_aes = document.getElementById('enable_aes').checked;
+    const aes_key = document.getElementById('aes_key').value;
+
+    // 验证AES密钥
+    if (enable_aes) {
+        if (aes_key.length < 16 || aes_key.length > 32) {
+            const status = document.getElementById('status');
+            status.textContent = '错误：AES密钥长度必须在16-32位之间';
+            status.className = 'alert alert-danger mt-3';
+            status.style.display = 'block';
+            document.getElementById('aes_key').focus();
+            return;
+        }
+    }
+
+    const sync_path = document.getElementById('selected-path').textContent.trim();
+    const database_filename = document.getElementById('backup_filename').value.trim() || 'bookmarks.json';
+    const auto_backup = document.getElementById('auto_backup').checked;
+    const auto_backup_interval = parseInt(document.getElementById('backup_interval').value) || 7;
 
     chrome.storage.sync.set({
         webdavConfig: {
             url: webdav_url,
             username: webdav_username,
-            password: webdav_password
+            password: webdav_password,
+            enable_aes: enable_aes,
+            aes_key: aes_key
         },
         bookmarkConfig: {
-            path: bookmarkPath
+            sync_path: sync_path,
+            database_filename: database_filename,
+            auto_backup: auto_backup,
+            auto_backup_interval: auto_backup_interval,
+            lastBackup: Date.now() // 记录最后备份时间
         }
     }, function() {
-        console.log('设置已保存，bookmarkPath:', bookmarkPath);
+        console.log('设置已保存，sync_path:', sync_path);
         const status = document.getElementById('status');
         status.textContent = '设置已保存';
         status.className = 'alert alert-success mt-3';
@@ -32,43 +56,60 @@ function restore_options() {
         webdavConfig: {
             url: '',
             username: '',
-            password: ''
+            password: '',
+            enable_aes: false,
+            aes_key: ''
         },
         bookmarkConfig: {
-            path: '/Bookmarks bar/'
+            sync_path: '/Bookmarks bar/',
+            database_filename: 'bookmarks.json',
+            auto_backup: false,
+            auto_backup_interval: 7,
+            lastBackup: null
         }
     }, function(items) {
         document.getElementById('webdav_url').value = items.webdavConfig.url;
         document.getElementById('webdav_username').value = items.webdavConfig.username;
         document.getElementById('webdav_password').value = items.webdavConfig.password;
-        document.getElementById('selected-path').textContent = items.bookmarkConfig.path;
+        document.getElementById('enable_aes').checked = items.webdavConfig.enable_aes;
+        document.getElementById('aes_key').value = items.webdavConfig.aes_key;
+        document.getElementById('selected-path').textContent = items.bookmarkConfig.sync_path;
+        document.getElementById('backup_filename').value = items.bookmarkConfig.database_filename;
+        document.getElementById('auto_backup').checked = items.bookmarkConfig.auto_backup;
+        document.getElementById('backup_interval').value = items.bookmarkConfig.auto_backup_interval;
+        
+        // 根据是否启用AES加密显示/隐藏密钥输入框
+        toggleAesKeyInput();
     });
 }
 
-// 导出配置到TOML文件
+// 切换AES密钥输入框的显示状态
+function toggleAesKeyInput() {
+    const aesKeyGroup = document.getElementById('aes_key_group');
+    const enableAes = document.getElementById('enable_aes').checked;
+    const aesKeyInput = document.getElementById('aes_key');
+    
+    if (enableAes) {
+        aesKeyGroup.style.display = 'block';
+        aesKeyInput.required = true;
+    } else {
+        aesKeyGroup.style.display = 'none';
+        aesKeyInput.required = false;
+        aesKeyInput.value = ''; // 清空密钥
+    }
+}
+
+// 导出配置到JSON文件
 async function exportConfig() {
     try {
-        const config = await chrome.storage.sync.get(['webdavConfig', 'bookmarkConfig']);
-        
-        // 构建TOML格式的配置
-        const toml = `# WebBrowserPrivateSync Configuration
-# Generated at ${new Date().toISOString()}
-
-[webdav]
-url = "${config.webdavConfig?.url || ''}"
-username = "${config.webdavConfig?.username || ''}"
-password = "${config.webdavConfig?.password || ''}"
-
-[bookmarks]
-path = "${config.bookmarkConfig?.path || '/Bookmarks bar/'}"
-`;
+        const config = await chrome.storage.sync.get(null);  // 获取所有配置
         
         // 创建Blob并下载
-        const blob = new Blob([toml], { type: 'text/plain' });
+        const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'WebBrowserPrivateSync-setting.toml';
+        a.download = 'WebBrowserPrivateSync-setting.json';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -90,42 +131,14 @@ path = "${config.bookmarkConfig?.path || '/Bookmarks bar/'}"
     }
 }
 
-// 从TOML文件导入配置
+// 从JSON文件导入配置
 async function importConfig(file) {
     try {
         const text = await file.text();
-        
-        // 解析TOML格式（简单实现，仅支持基本格式）
-        const config = {
-            webdavConfig: {},
-            bookmarkConfig: {}
-        };
-        
-        let currentSection = '';
-        const lines = text.split('\n');
-        
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('#')) continue;
-            
-            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-                currentSection = trimmed.slice(1, -1);
-                continue;
-            }
-            
-            const match = trimmed.match(/^(\w+)\s*=\s*"([^"]*)"$/);
-            if (match) {
-                const [, key, value] = match;
-                if (currentSection === 'webdav') {
-                    config.webdavConfig[key] = value;
-                } else if (currentSection === 'bookmarks') {
-                    config.bookmarkConfig[key] = value;
-                }
-            }
-        }
+        const config = JSON.parse(text);
         
         // 验证必要的字段
-        if (!config.webdavConfig.url) {
+        if (!config.webdavConfig?.url) {
             throw new Error('配置文件缺少WebDAV URL');
         }
         
@@ -136,7 +149,10 @@ async function importConfig(file) {
         document.getElementById('webdav_url').value = config.webdavConfig.url;
         document.getElementById('webdav_username').value = config.webdavConfig.username;
         document.getElementById('webdav_password').value = config.webdavConfig.password;
-        document.getElementById('selected-path').textContent = config.bookmarkConfig.path;
+        document.getElementById('selected-path').textContent = config.bookmarkConfig.sync_path;
+        document.getElementById('backup_filename').value = config.bookmarkConfig.database_filename;
+        document.getElementById('auto_backup').checked = config.bookmarkConfig.auto_backup;
+        document.getElementById('backup_interval').value = config.bookmarkConfig.auto_backup_interval;
         
         const status = document.getElementById('status');
         status.textContent = '配置已成功导入';
@@ -272,4 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         event.target.value = ''; // 清除选择，允许重复选择同一个文件
     });
+    
+    document.getElementById('enable_aes').addEventListener('change', toggleAesKeyInput);
 }); 

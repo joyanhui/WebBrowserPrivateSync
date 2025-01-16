@@ -1,47 +1,61 @@
-// 加载同步路径
-async function loadSyncPath() {
+// 初始化UI
+async function initializeUI() {
     try {
-        console.log('开始加载同步路径...');
-        const config = await chrome.storage.sync.get('bookmarkConfig');
-        console.log('获取到的配置:', config);
+        // 从storage中获取配置
+        const config = await chrome.storage.sync.get(['bookmarkConfig']);
         
-        const syncPath = config.bookmarkConfig?.path || '/Bookmarks bar/';
-        console.log('同步路径:', syncPath);
+        // 更新同步路径显示
+        updateSyncPathDisplay(config.bookmarkConfig?.sync_path);
         
-        const pathElement = document.getElementById('sync-path');
-        if (pathElement) {
-            pathElement.textContent = syncPath;
-        } else {
-            console.error('找不到sync-path元素');
-        }
+        // 添加按钮事件监听
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            // 触发自定义事件，让bookmarks.js处理
+            document.dispatchEvent(new CustomEvent('bookmarkExport'));
+        });
+        
+        document.getElementById('importBtn').addEventListener('click', () => {
+            // 触发自定义事件，让bookmarks.js处理
+            document.dispatchEvent(new CustomEvent('bookmarkImport'));
+        });
+        
     } catch (error) {
-        console.error('加载同步路径失败:', error);
-        const pathElement = document.getElementById('sync-path');
-        if (pathElement) {
-            pathElement.textContent = '加载失败: ' + error.message;
-        }
+        console.error('初始化UI失败:', error);
+        showStatus('初始化失败: ' + error.message, 'danger');
     }
 }
 
-// 页面加载时获取同步路径
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM加载完成，开始初始化...');
-    loadSyncPath();
-});
+// 更新同步路径显示
+function updateSyncPathDisplay(path) {
+    const syncPathElement = document.getElementById('sync-path');
+    syncPathElement.textContent = path || '/Bookmarks bar/';
+}
 
-// 监听storage变化，实时更新显示的路径
+// 显示状态信息
+function showStatus(message, type = 'info') {
+    const status = document.getElementById('status');
+    status.textContent = message;
+    status.className = `alert alert-${type}`;
+    status.style.display = 'block';
+    
+    if (type !== 'danger') {
+        setTimeout(() => {
+            status.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// 监听storage变化
 chrome.storage.onChanged.addListener((changes, namespace) => {
-    console.log('Storage变化:', changes, namespace);
     if (namespace === 'sync' && changes.bookmarkConfig) {
-        const newPath = changes.bookmarkConfig.newValue?.path;
-        if (newPath) {
-            const pathElement = document.getElementById('sync-path');
-            if (pathElement) {
-                pathElement.textContent = newPath;
-            }
+        const newConfig = changes.bookmarkConfig.newValue;
+        if (newConfig?.sync_path) {
+            updateSyncPathDisplay(newConfig.sync_path);
         }
     }
 });
 
-// 立即执行一次加载
-loadSyncPath(); 
+// 导出全局函数供其他模块使用
+window.showStatus = showStatus;
+
+// 页面加载完成后初始化UI
+document.addEventListener('DOMContentLoaded', initializeUI); 
