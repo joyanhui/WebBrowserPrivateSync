@@ -1,0 +1,224 @@
+:root {
+    --primary-color: #007bff;
+    --primary-dark: #0056b3;
+    --background-color: #0a192f;
+    --text-color: #e6f1ff;
+    --sidebar-bg: rgba(13, 28, 51, 0.9);
+    --editor-bg: rgba(13, 28, 51, 0.7);
+    --input-bg: rgba(255, 255, 255, 0.1);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    width: 800px;
+    height: 500px;
+    box-sizing: border-box;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+    background: var(--sidebar-bg);
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(0, 123, 255, 0.2),
+                0 0 80px rgba(0, 123, 255, 0.1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 123, 255, 0.1) 0%, transparent 60%);
+    animation: rotate 20s linear infinite;
+    z-index: -1;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.sidebar {
+    width: 200px;
+    border-right: 1px solid rgba(0, 123, 255, 0.2);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.file-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.file-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.file-list::-webkit-scrollbar-track {
+    background: var(--input-bg);
+    border-radius: 2px;
+}
+
+.file-list::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.file-item {
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.file-item:hover {
+    background: var(--input-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.2);
+}
+
+.editor {
+    flex: 1;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    background: var(--editor-bg);
+}
+
+.filename-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    background: var(--input-bg);
+    border: 2px solid var(--input-bg);
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.filename-container:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.3);
+}
+
+#filename {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+#filename:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.filename-suffix {
+    padding: 8px 12px 8px 0;
+    color: var(--text-color);
+    opacity: 0.7;
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+#markdown-editor {
+    flex: 1;
+    resize: none;
+    padding: 10px;
+    border: 2px solid var(--input-bg);
+    border-radius: 6px;
+    background: var(--input-bg);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+#markdown-editor:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.3);
+}
+
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--primary-color);
+    color: white;
+}
+
+button:hover {
+    background: var(--primary-dark);
+    box-shadow: 0 0 20px rgba(0, 123, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+#new-file {
+    width: 100%;
+    margin-top: auto;
+}
+
+#delete {
+    background: #dc3545;
+}
+
+#delete:hover {
+    background: #c82333;
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.4);
+}
+
+.sidebar-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+}
+
+#new-file {
+    width: 100%;
+}
+
+.secondary-button {
+    background: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.secondary-button:hover {
+    background: rgba(0, 123, 255, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(0, 123, 255, 0.2);
+} 

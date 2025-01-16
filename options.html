@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Options</title>
+    <meta charset="utf-8">
+    <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .bookmark-path {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .config-actions {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+        .config-actions .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        #config-file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">WebDAV Service Settings</h2>
+        <div class="mb-3">
+            <label for="webdav_url" class="form-label">WebDAV URL</label>
+            <input type="url" class="form-control" id="webdav_url">
+        </div>
+        <div class="mb-3">
+            <label for="webdav_username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="webdav_username">
+        </div>
+        <div class="mb-3">
+            <label for="webdav_password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="webdav_password">
+        </div>
+
+        <h2 class="mb-4 mt-5">Bookmark Settings</h2>
+        <div class="mb-3">
+            <label class="form-label">Bookmark Folder</label>
+            <button id="select-folder" class="btn btn-outline-primary">Select Folder</button>
+            <div id="selected-path" class="bookmark-path">
+                /Bookmarks bar/
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button id="save" class="btn btn-primary">Save</button>
+        </div>
+        
+        <div id="status" class="alert mt-3" style="display: none;"></div>
+
+        <!-- 配置导入导出部分 -->
+        <div class="config-actions">
+            <h3 class="mb-3">Configuration Management</h3>
+            <div class="btn-group">
+                <button id="export-config" class="btn btn-outline-primary">
+                    <i class="bi bi-download"></i> Export Settings
+                </button>
+                <input type="file" id="config-file-input" accept=".toml">
+                <button id="import-config" class="btn btn-outline-secondary">
+                    <i class="bi bi-upload"></i> Import Settings
+                </button>
+            </div>
+            <div class="text-muted mt-2">
+                <small>Settings will be saved as WebBrowserPrivateSync-setting.toml</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/options.js"></script>
+</body>
+</html> 
