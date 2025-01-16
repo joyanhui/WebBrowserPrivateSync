@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>标签页同步管理</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            min-width: 800px;
+            background-color: #f8f9fa;
+        }
+        .device-selector {
+            margin-bottom: 20px;
+        }
+        .device-selector select {
+            min-width: 200px;
+        }
+        .tab-list {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tab-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .tab-item:last-child {
+            border-bottom: none;
+        }
+        .tab-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+        }
+        .tab-title {
+            flex-grow: 1;
+            margin-right: 15px;
+        }
+        .tab-url {
+            color: #6c757d;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+        .status {
+            margin-top: 15px;
+            display: none;
+        }
+        .device-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .device-name {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .last-sync {
+            color: #6c757d;
+        }
+        .no-tabs {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">标签页同步管理</h2>
+        
+        <div class="device-selector">
+            <select id="deviceSelect" class="form-select">
+                <option value="">加载设备列表中...</option>
+            </select>
+        </div>
+
+        <div class="tab-list">
+            <div class="device-info">
+                <div class="device-name" id="currentDevice">未选择设备</div>
+                <div class="last-sync" id="lastSync"></div>
+            </div>
+            <div id="tabList">
+                <div class="no-tabs">请选择一个设备查看其标签页</div>
+            </div>
+        </div>
+
+        <div id="status" class="alert status"></div>
+    </div>
+
+    <script src="js/tabs.js"></script>
+</body>
+</html> 

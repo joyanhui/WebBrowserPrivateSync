@@ -1,26 +1,3 @@
-// 显示状态信息
-function showStatus(message, type = 'info') {
-    const status = document.getElementById('status');
-    if (status) {
-        status.textContent = message;
-        status.className = `alert alert-${type} mt-3`;
-        status.style.display = 'block';
-        
-        if (type !== 'danger') {
-            setTimeout(() => {
-                status.style.display = 'none';
-            }, 3000);
-        }
-    } else {
-        // 如果在后台运行，只打印到控制台
-        if (type === 'danger') {
-            console.error(message);
-        } else {
-            console.log(message);
-        }
-    }
-}
-
 // 格式化书签数据
 function formatBookmarkData(node) {
     if (!node) return null;
@@ -165,106 +142,19 @@ async function findBookmarkFolder(path) {
     return current;
 }
 
-// 导出书签到WebDAV
-async function exportBookmarks() {
-    try {
-        showStatus('正在导出书签...', 'info');
-        
-        // 获取配置的同步路径
-        const config = await chrome.storage.sync.get(['bookmarkConfig']);
-        if (!config.bookmarkConfig?.sync_path) {
-            throw new Error('未配置同步路径');
-        }
-
-        // 查找指定路径的书签文件夹
-        const bookmarkFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
-        
-        // 上传到WebDAV
-        await uploadBookmarks(bookmarkFolder);
-        
-        showStatus('书签导出成功', 'success');
-    } catch (error) {
-        console.error('导出书签失败:', error);
-        showStatus('导出失败: ' + error.message, 'danger');
-    }
-}
-
-// 合并书签
-async function mergeBookmarks(remoteBookmarks, localFolder) {
-    // 获取本地书签
-    const localBookmarks = formatBookmarkData(localFolder);
-    
-    // 创建URL到书签的映射
-    const urlMap = new Map();
-    
-    // 递归处理书签,构建URL映射
-    function processBookmarks(bookmarks, isRemote = false) {
-        if (!bookmarks) return;
-        
-        if (bookmarks.url) {
-            const existing = urlMap.get(bookmarks.url);
-            if (!existing || (isRemote && bookmarks.dateAdded > existing.dateAdded)) {
-                urlMap.set(bookmarks.url, {
-                    ...bookmarks,
-                    isRemote
-                });
-            }
-        }
-        
-        if (bookmarks.children) {
-            for (const child of bookmarks.children) {
-                processBookmarks(child, isRemote);
-            }
-        }
-    }
-    
-    // 处理本地和远程书签
-    processBookmarks(localBookmarks, false);
-    processBookmarks(remoteBookmarks, true);
-    
-    // 构建合并后的书签树
-    function buildMergedTree(bookmarks) {
-        if (!bookmarks) return null;
-        
-        if (bookmarks.url) {
-            const merged = urlMap.get(bookmarks.url);
-            return merged;
-        }
-        
-        const result = {
-            title: bookmarks.title,
-            children: []
-        };
-        
-        if (bookmarks.children) {
-            for (const child of bookmarks.children) {
-                const mergedChild = buildMergedTree(child);
-                if (mergedChild) {
-                    result.children.push(mergedChild);
-                }
-            }
-        }
-        
-        return result;
-    }
-    
-    // 返回合并后的书签树
-    return buildMergedTree(remoteBookmarks);
-}
-
 // 同步书签
-async function syncBookmarks() {
+async function syncBookmarks(targetFolder) {
     try {
-        showStatus('正在同步书签...', 'info');
-        
         // 获取配置的同步路径
         const config = await chrome.storage.sync.get(['bookmarkConfig']);
         if (!config.bookmarkConfig?.sync_path) {
             throw new Error('未配置同步路径');
         }
 
-        // 查找指定路径的书签文件夹
-        const targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
+        // 如果没有传入targetFolder，查找指定路径的书签文件夹
+        if (!targetFolder) {
+            targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
+        }
         
         try {
             // 尝试从WebDAV下载书签
@@ -275,7 +165,6 @@ async function syncBookmarks() {
                 // 如果WebDAV上没有数据文件，则以本地书签为准
                 console.log('WebDAV上没有数据文件，将上传本地书签');
                 await uploadBookmarks(targetFolder);
-                showStatus('首次同步完成，已上传本地书签', 'success');
                 return;
             }
             
@@ -304,7 +193,7 @@ async function syncBookmarks() {
                     }
                 }
             }
-            
+
             buildBookmarkMap(remoteBookmarks, remoteMap);
             buildBookmarkMap(localBookmarks, localMap);
             
@@ -323,11 +212,15 @@ async function syncBookmarks() {
                 if (!localMap.has(id)) {
                     // 远程存在但本地不存在的书签,需要在本地创建
                     if (remoteBookmark.url) {
-                        await chrome.bookmarks.create({
-                            parentId: targetFolder.id,
-                            title: remoteBookmark.title,
-                            url: remoteBookmark.url
-                        });
+                        try {
+                            await chrome.bookmarks.create({
+                                parentId: targetFolder.id,
+                                title: remoteBookmark.title,
+                                url: remoteBookmark.url
+                            });
+                        } catch (error) {
+                            console.error(`创建书签失败: ${remoteBookmark.title}`, error);
+                        }
                     }
                 }
             }
@@ -335,107 +228,26 @@ async function syncBookmarks() {
             // 上传更新后的书签到WebDAV
             await uploadBookmarks(targetFolder);
             
-            showStatus('书签同步成功', 'success');
         } catch (error) {
             if (error.message.includes('404') || error.message.includes('下载失败')) {
                 // 如果是因为文件不存在导致的错误，上传本地书签
                 console.log('WebDAV上没有数据文件，将上传本地书签');
                 await uploadBookmarks(targetFolder);
-                showStatus('首次同步完成，已上传本地书签', 'success');
                 return;
             }
             throw error; // 其他错误继续抛出
         }
     } catch (error) {
         console.error('同步书签失败:', error);
-        showStatus('同步失败: ' + error.message, 'danger');
+        throw error;
     }
 }
 
-// 从WebDAV导入书签 (完全覆盖本地)
-async function importBookmarks() {
-    try {
-        showStatus('正在导入书签...', 'info');
-        
-        // 获取配置的同步路径
-        const config = await chrome.storage.sync.get(['bookmarkConfig']);
-        if (!config.bookmarkConfig?.sync_path) {
-            throw new Error('未配置同步路径');
-        }
-
-        // 查找指定路径的书签文件夹
-        const targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
-        
-        // 从WebDAV下载书签
-        const remoteBookmarks = await downloadBookmarks();
-        
-        // 导入书签到指定文件夹 (会清空原有内容)
-        await importToFolder(remoteBookmarks, targetFolder.id);
-        
-        showStatus('书签导入成功', 'success');
-    } catch (error) {
-        console.error('导入书签失败:', error);
-        showStatus('导入失败: ' + error.message, 'danger');
-    }
-}
-
-// 导入书签到指定文件夹
-async function importToFolder(bookmarks, folderId) {
-    // 清空目标文件夹
-    const children = await chrome.bookmarks.getChildren(folderId);
-    for (const child of children) {
-        await chrome.bookmarks.removeTree(child.id);
-    }
-
-    // 递归创建书签
-    async function createBookmarkRecursive(data, parentId) {
-        if (!data) return;
-
-        if (data.url) {
-            // 创建书签
-            await chrome.bookmarks.create({
-                parentId: parentId,
-                title: data.title || '未命名书签',
-                url: data.url
-            });
-        } else if (data.children) {
-            // 创建文件夹
-            const folder = await chrome.bookmarks.create({
-                parentId: parentId,
-                title: data.title || '未命名文件夹'
-            });
-            
-            // 递归处理子项
-            for (const child of data.children) {
-                await createBookmarkRecursive(child, folder.id);
-            }
-        }
-    }
-
-    // 导入书签
-    if (bookmarks.children) {
-        for (const child of bookmarks.children) {
-            await createBookmarkRecursive(child, folderId);
-        }
-    } else {
-        await createBookmarkRecursive(bookmarks, folderId);
-    }
-}
-
-// 监听同步事件
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'syncBookmarks') {
-        syncBookmarks();
-    }
-});
-
-// 监听导入事件
-document.addEventListener('bookmarkImport', importBookmarks);
-
-// 导出所有需要的函数
-export {
-    exportBookmarks,
-    importBookmarks,
-    showStatus,
+// 导出所有函数到全局对象
+self.BookmarksCore = {
+    formatBookmarkData,
+    uploadBookmarks,
+    downloadBookmarks,
+    findBookmarkFolder,
     syncBookmarks
-};
+}; 

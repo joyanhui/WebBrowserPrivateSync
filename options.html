@@ -33,7 +33,7 @@
         .form-check {
             margin-top: 10px;
         }
-        .backup-settings {
+        .settings-section {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 6px;
@@ -43,74 +43,104 @@
 </head>
 <body>
     <div class="container">
+        <!-- WebDAV服务设置 -->
         <h2 class="mb-4">WebDAV Service Settings</h2>
-        <div class="mb-3">
-            <label for="webdav_url" class="form-label">WebDAV URL</label>
-            <input type="url" class="form-control" id="webdav_url">
-        </div>
-        <div class="mb-3">
-            <label for="webdav_username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="webdav_username">
-        </div>
-        <div class="mb-3">
-            <label for="webdav_password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="webdav_password">
-        </div>
+        <div class="settings-section">
+            <div class="mb-3">
+                <label for="webdav_url" class="form-label">WebDAV URL</label>
+                <input type="url" class="form-control" id="webdav_url">
+            </div>
+            <div class="mb-3">
+                <label for="webdav_username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="webdav_username">
+            </div>
+            <div class="mb-3">
+                <label for="webdav_password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="webdav_password">
+            </div>
 
-        <!-- 添加AES加密设置 -->
-        <div class="mb-3">
-            <div class="form-check">
-                <input type="checkbox" class="form-check-input" id="enable_aes">
-                <label class="form-check-label" for="enable_aes">
-                    启用AES加密
-                </label>
-                <div class="form-text">对备份到WebDAV的数据进行AES加密（md文件除外）</div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="enable_aes">
+                    <label class="form-check-label" for="enable_aes">
+                        启用AES加密
+                    </label>
+                    <div class="form-text">对备份到WebDAV的数据进行AES加密（md文件除外）</div>
+                </div>
+            </div>
+            <div class="mb-3" id="aes_key_group">
+                <label for="aes_key" class="form-label">AES密钥</label>
+                <input type="password" class="form-control" id="aes_key" minlength="16" maxlength="32" placeholder="请输入16-32位的密钥">
+                <div class="form-text">
+                    <ul class="mb-0 ps-3">
+                        <li>密钥长度必须在16-32位之间</li>
+                        <li>建议使用字母、数字和特殊字符的组合</li>
+                        <li>请妥善保管密钥，密钥丢失将无法恢复加密的数据</li>
+                    </ul>
+                </div>
             </div>
         </div>
-        <div class="mb-3" id="aes_key_group">
-            <label for="aes_key" class="form-label">AES密钥</label>
-            <input type="password" class="form-control" id="aes_key" minlength="16" maxlength="32" placeholder="请输入16-32位的密钥">
-            <div class="form-text">
-                <ul class="mb-0 ps-3">
-                    <li>密钥长度必须在16-32位之间</li>
-                    <li>建议使用字母、数字和特殊字符的组合</li>
-                    <li>请妥善保管密钥，密钥丢失将无法恢复加密的数据</li>
-                </ul>
+
+        <!-- 通用设置 -->
+        <h2 class="mb-4 mt-5">General Settings</h2>
+        <div class="settings-section">
+            <div class="mb-3">
+                <label for="device_name" class="form-label">设备名</label>
+                <input type="text" class="form-control" id="device_name" placeholder="请输入设备名称">
+                <div class="form-text">用于区分不同设备的同步数据</div>
             </div>
         </div>
 
+        <!-- 书签设置 -->
         <h2 class="mb-4 mt-5">Bookmark Settings</h2>
-        <div class="mb-3">
-            <label class="form-label">Sync Path</label>
-            <button id="select-folder" class="btn btn-outline-primary">Select Folder</button>
-            <div id="selected-path" class="bookmark-path">
-                /Bookmarks bar/
+        <div class="settings-section">
+            <div class="mb-3">
+                <label class="form-label">Sync Path</label>
+                <button id="select-folder" class="btn btn-outline-primary">Select Folder</button>
+                <div id="selected-path" class="bookmark-path">
+                    /Bookmarks bar/
+                </div>
+                <div class="form-text">选择需要同步的书签文件夹路径</div>
             </div>
-            <div class="form-text">选择需要同步的书签文件夹路径</div>
-        </div>
 
-        <!-- 添加备份设置 -->
-        <div class="backup-settings">
-            <h3>备份设置</h3>
             <div class="mb-3">
                 <label for="database_filename" class="form-label">数据库文件名</label>
                 <input type="text" class="form-control" id="database_filename" value="bookmarks.json">
             </div>
+
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="auto_backup">
                 <label class="form-check-label" for="auto_backup">启用自动备份</label>
             </div>
+
             <div class="mb-3">
                 <label for="backup_interval" class="form-label">备份间隔(天)</label>
                 <input type="number" class="form-control" id="backup_interval" value="7" min="1">
             </div>
+
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="enable_auto_sync">
                 <label class="form-check-label" for="enable_auto_sync">启用自动同步</label>
             </div>
+
             <div class="mb-3">
                 <label for="sync_interval" class="form-label">同步间隔(秒)</label>
                 <input type="number" class="form-control" id="sync_interval" value="300" min="30">
+                <div class="form-text">最小间隔30秒</div>
+            </div>
+        </div>
+
+        <!-- 标签页设置 -->
+        <h2 class="mb-4 mt-5">Tab Settings</h2>
+        <div class="settings-section">
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="enable_tabs_sync">
+                <label class="form-check-label" for="enable_tabs_sync">启用标签页同步（自动同步到 tabs.[device_name].json）</label>
+            </div>
+
+            <div class="mb-3">
+                <label for="tabs_sync_interval" class="form-label">同步间隔(秒)</label>
+                <input type="number" class="form-control" id="tabs_sync_interval" value="30" min="30">
                 <div class="form-text">最小间隔30秒</div>
             </div>
         </div>

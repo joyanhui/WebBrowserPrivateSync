@@ -18,12 +18,17 @@ async function save_options() {
         }
     }
 
+    // 验证设备名
+    const device_name = document.getElementById('device_name').value.trim() || 'MainDeviceName';  // 使用默认值
+
     const sync_path = document.getElementById('selected-path').textContent.trim();
     const database_filename = document.getElementById('database_filename').value.trim() || 'bookmarks.json';
     const auto_backup = document.getElementById('auto_backup').checked;
     const backup_interval = parseInt(document.getElementById('backup_interval').value) || 7;
     const enable_auto_sync = document.getElementById('enable_auto_sync').checked;
     const sync_interval = Math.max(30, parseInt(document.getElementById('sync_interval').value) || 300);
+    const enable_tabs_sync = document.getElementById('enable_tabs_sync').checked;
+    const tabs_sync_interval = Math.max(30, parseInt(document.getElementById('tabs_sync_interval').value) || 30);
 
     chrome.storage.sync.set({
         webdavConfig: {
@@ -34,13 +39,16 @@ async function save_options() {
             aes_key: aes_key
         },
         bookmarkConfig: {
+            device_name: device_name,
             sync_path: sync_path,
             database_filename: database_filename,
             auto_backup: auto_backup,
             backup_interval: backup_interval,
             enable_auto_sync: enable_auto_sync,
             sync_interval: sync_interval,
-            lastBackup: Date.now() // 记录最后备份时间
+            enable_tabs_sync: enable_tabs_sync,
+            tabs_sync_interval: tabs_sync_interval,
+            lastBackup: Date.now()
         }
     }, function() {
         console.log('设置已保存，sync_path:', sync_path);
@@ -65,28 +73,37 @@ async function restore_options() {
             aes_key: ''
         },
         bookmarkConfig: {
+            device_name: 'MainDeviceName',  // 设置默认值
             sync_path: '/Bookmarks bar/',
             database_filename: 'bookmarks.json',
             auto_backup: false,
             backup_interval: 7,
             enable_auto_sync: false,
             sync_interval: 300,
+            enable_tabs_sync: false,
+            tabs_sync_interval: 30,
             lastBackup: null
         }
     }, function(items) {
+        // WebDAV设置
         document.getElementById('webdav_url').value = items.webdavConfig.url;
         document.getElementById('webdav_username').value = items.webdavConfig.username;
         document.getElementById('webdav_password').value = items.webdavConfig.password;
         document.getElementById('enable_aes').checked = items.webdavConfig.enable_aes;
         document.getElementById('aes_key').value = items.webdavConfig.aes_key;
+        
+        // 书签设置
+        document.getElementById('device_name').value = items.bookmarkConfig.device_name;  // 确保设置设备名
         document.getElementById('selected-path').textContent = items.bookmarkConfig.sync_path;
         document.getElementById('database_filename').value = items.bookmarkConfig.database_filename;
         document.getElementById('auto_backup').checked = items.bookmarkConfig.auto_backup;
         document.getElementById('backup_interval').value = items.bookmarkConfig.backup_interval;
         document.getElementById('enable_auto_sync').checked = items.bookmarkConfig.enable_auto_sync;
         document.getElementById('sync_interval').value = items.bookmarkConfig.sync_interval;
+        document.getElementById('enable_tabs_sync').checked = items.bookmarkConfig.enable_tabs_sync;
+        document.getElementById('tabs_sync_interval').value = items.bookmarkConfig.tabs_sync_interval;
         
-        // 根据是否启用AES加密显示/隐藏密钥输入框
+        // 更新AES密钥输入框的状态
         toggleAesKeyInput();
     });
 }
