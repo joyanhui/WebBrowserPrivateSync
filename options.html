@@ -111,8 +111,12 @@
                 <a class="nav-link" href="bookmarks.html">书签同步</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" href="history.html">历史记录同步</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link active" href="options.html">设置</a>
             </li>
+        
         </ul>
 
         <!-- WebDAV服务设置 -->
@@ -211,6 +215,21 @@
             <div class="mb-3">
                 <label for="tabs_sync_interval" class="form-label">同步间隔(秒)</label>
                 <input type="number" class="form-control" id="tabs_sync_interval" value="30" min="30">
+                <div class="form-text">最小间隔30秒</div>
+            </div>
+        </div>
+
+        <!-- 历史记录设置 -->
+        <div class="settings-section">
+            <h3 class="section-title">历史记录设置</h3>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="enable_history_sync">
+                <label class="form-check-label" for="enable_history_sync">启用历史记录同步</label>
+            </div>
+
+            <div class="mb-3">
+                <label for="history_sync_interval" class="form-label">同步间隔(秒)</label>
+                <input type="number" class="form-control" id="history_sync_interval" value="30" min="30">
                 <div class="form-text">最小间隔30秒</div>
             </div>
         </div>

@@ -1,6 +1,8 @@
 
 你是一个浏览器插件开发者
 
+在修改和完善功能的时候 永远不要删除已经存在的功能
+
 - 界面风格
 蓝色和深蓝色为主色调，并有光晕效果
 使用 bootstrap@5.3.3 框架 css/bootstrap5.3.3.min.css
@@ -8,3 +10,9 @@
 - es功能
 
 不要使用es模块语法
+
+background.js 是 service works 不要使用es模块语法 不要使用windows对象
+
+
+历史记录 根据设备名称 同步到 远端 文件名格式  hiscory.[设备名].json
+tabs 根据设备名称 同步到 远端 文件名格式  tabs.[设备名].json

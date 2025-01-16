@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "bookmarks",
-    "tabs"
+    "tabs",
+    "history"
   ],
   "host_permissions": [
     "http://*/*",

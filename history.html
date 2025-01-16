@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>标签页同步管理</title>
+    <title>历史记录同步管理</title>
     <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
     <style>
         body {
@@ -10,47 +10,48 @@
             min-width: 800px;
             background-color: #f8f9fa;
         }
-        .tab-list {
+        .history-list {
             background: white;
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .tab-item {
+        .history-item {
             display: flex;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
+            flex-direction: column;
+            padding: 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: white;
+            transition: all 0.3s ease;
         }
-        .tab-item:last-child {
-            border-bottom: none;
+        .history-item:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 2px 4px rgba(13, 110, 253, 0.1);
         }
-        .tab-icon {
-            width: 16px;
-            height: 16px;
-            margin-right: 10px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            flex-shrink: 0;
-        }
-        .tab-icon.default {
-            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iIzZjNzU3ZCIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBkPSJNMTQuMjUgMi41SDEuNzVhLjI1LjI1IDAgMCAwLS4yNS4yNXYxMC41YzAgLjEzOC4xMTIuMjUuMjUuMjVoMTIuNWEuMjUuMjUgMCAwIDAgLjI1LS4yNVYyLjc1YS4yNS4yNSAwIDAgMC0uMjUtLjI1ek0xLjc1IDFhMS43NSAxLjc1IDAgMCAwLTEuNzUgMS43NXYxMC41QTEuNzUgMS43NSAwIDAgMCAxLjc1IDE1aDEyLjVhMS43NSAxLjc1IDAgMCAwIDEuNzUtMS43NVYyLjc1QTEuNzUgMS43NSAwIDAgMCAxNC4yNSAxSDEuNzV6Ii8+PC9zdmc+');
-        }
-        .tab-title {
-            flex-grow: 1;
-            margin-right: 15px;
-            color: #333;
+        .history-title {
+            font-weight: 500;
+            color: #0d6efd;
+            margin-bottom: 5px;
             text-decoration: none;
         }
-        .tab-url {
-            color: #0d6efd;
+        .history-title:hover {
+            text-decoration: underline;
+        }
+        .history-url {
+            color: #6c757d;
             font-size: 0.9em;
             word-break: break-all;
             text-decoration: none;
         }
-        .tab-url:hover {
+        .history-url:hover {
             text-decoration: underline;
+        }
+        .history-meta {
+            font-size: 0.85em;
+            color: #adb5bd;
+            margin-top: 5px;
         }
         .status {
             margin-top: 15px;
@@ -69,7 +70,7 @@
         .last-sync {
             color: #6c757d;
         }
-        .no-tabs {
+        .no-history {
             text-align: center;
             padding: 20px;
             color: #6c757d;
@@ -115,26 +116,25 @@
                 <a class="nav-link" href="md-edit.html">md编辑器</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" href="tabs.html">标签页同步</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" href="bookmarks.html">书签同步</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link active" href="tabs.html">标签页同步</a>
-            </li>
-  
-            <li class="nav-item">
-                <a class="nav-link" href="history.html">历史记录同步</a>
+                <a class="nav-link active" href="history.html">历史记录</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="options.html">设置</a>
             </li>
         </ul>
 
-        <h2 class="mb-4">标签页同步管理</h2>
+        <h2 class="mb-4">历史记录同步管理</h2>
         
         <!-- 设备选择标签页 -->
         <ul class="nav nav-tabs sub-tabs" id="deviceTabs">
             <li class="nav-item">
-                <a class="nav-link active" href="#" data-device-id="local">本地标签页</a>
+                <a class="nav-link active" href="#" data-device-id="local">本地历史记录</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="#" data-device-id="current">当前设备同步记录</a>
@@ -143,13 +143,13 @@
         </ul>
 
         <div class="tab-content">
-            <div class="tab-list">
+            <div class="history-list">
                 <div class="device-info">
                     <div class="device-name" id="currentDevice">未选择设备</div>
                     <div class="last-sync" id="lastSync"></div>
                 </div>
-                <div id="tabList">
-                    <div class="no-tabs">加载标签页数据中...</div>
+                <div id="historyList">
+                    <div class="no-history">加载历史记录数据中...</div>
                 </div>
             </div>
         </div>
@@ -158,6 +158,6 @@
     </div>
 
     <script src="js/crypto-js.min.js"></script>
-    <script src="js/tabs.js"></script>
+    <script src="js/history.js"></script>
 </body>
 </html> 

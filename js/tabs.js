@@ -192,16 +192,39 @@ async function loadTabs(deviceId = 'current') {
             tabs.forEach(tab => {
                 tabList.appendChild(createTabElement(tab));
             });
+            
+            // 上传当前标签页到WebDAV
+            try {
+                await uploadTabs(tabs);
+            } catch (error) {
+                console.error('上传标签页失败:', error);
+                showStatus('上传标签页失败: ' + error.message, 'warning');
+            }
         } else {
             // 从WebDAV加载其他设备的标签页
-            const config = await chrome.storage.sync.get(['webdavConfig']);
-            if (!config.webdavConfig) {
-                showStatus('请先配置WebDAV服务', 'warning');
-                return;
+            try {
+                const filename = `tabs.${deviceId}.json`;
+                const tabData = await downloadTabFile(filename);
+                
+                deviceName.textContent = tabData.deviceName || deviceId;
+                lastSync.textContent = formatDateTime(tabData.lastSync);
+                
+                if (!tabData.tabs || tabData.tabs.length === 0) {
+                    tabList.innerHTML = '<div class="no-tabs">暂无标签页</div>';
+                    return;
+                }
+                
+                tabList.innerHTML = '';
+                tabData.tabs.forEach(tab => {
+                    tabList.appendChild(createTabElement(tab));
+                });
+            } catch (error) {
+                if (error.message.includes('404')) {
+                    tabList.innerHTML = '<div class="no-tabs">未找到该设备的标签页数据</div>';
+                } else {
+                    throw error;
+                }
             }
-            
-            // TODO: 从WebDAV加载其他设备的标签页
-            // 这里需要实现从WebDAV加载数据的逻辑
         }
     } catch (error) {
         console.error('加载标签页失败:', error);
@@ -210,39 +233,330 @@ async function loadTabs(deviceId = 'current') {
     }
 }
 
-// 初始化设备标签页
+// 获取设备名称
+async function getDeviceName() {
+    try {
+        const { deviceName } = await chrome.storage.sync.get('deviceName');
+        return deviceName || '未命名设备';
+    } catch (error) {
+        console.error('获取设备名称失败:', error);
+        return '未命名设备';
+    }
+}
+
+// 上传标签页到WebDAV
+async function uploadTabs(tabs) {
+    const config = await chrome.storage.sync.get(['webdavConfig']);
+    const { url, username, password, enable_aes, aes_key } = config.webdavConfig;
+    const deviceName = await getDeviceName();
+
+    if (!url || !username || !password) {
+        throw new Error('WebDAV配置不完整');
+    }
+
+    // 准备要上传的数据
+    const uploadData = {
+        deviceName,
+        lastSync: new Date().getTime(),
+        tabs: tabs.map(tab => ({
+            title: tab.title,
+            url: tab.url,
+            favIconUrl: tab.favIconUrl
+        }))
+    };
+
+    // 加密数据
+    let finalData;
+    if (enable_aes && aes_key) {
+        const jsonStr = JSON.stringify(uploadData);
+        finalData = CryptoJS.AES.encrypt(jsonStr, aes_key).toString();
+    } else {
+        finalData = JSON.stringify(uploadData, null, 2);
+    }
+
+    // 构建文件名
+    const filename = `tabs.${deviceName}.json`;
+    const baseUrl = url.endsWith('/') ? url : url + '/';
+
+    // 上传文件
+    const response = await fetch(baseUrl + filename, {
+        method: 'PUT',
+        headers: {
+            'Authorization': 'Basic ' + btoa(username + ':' + password),
+            'Content-Type': 'application/json'
+        },
+        body: finalData
+    });
+
+    if (!response.ok) {
+        throw new Error(`上传失败: ${response.status} ${response.statusText}`);
+    }
+}
+
+// 格式化日期时间
+function formatDateTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) { // 小于1分钟
+        return '刚刚';
+    } else if (diff < 3600000) { // 小于1小时
+        return `${Math.floor(diff / 60000)}分钟前`;
+    } else if (diff < 86400000) { // 小于24小时
+        return `${Math.floor(diff / 3600000)}小时前`;
+    } else {
+        return date.toLocaleString();
+    }
+}
+
+// 初始化设备标签
 async function initDeviceTabs() {
     const deviceTabs = document.getElementById('deviceTabs');
-    if (!deviceTabs) return;
+    const currentDeviceName = await getDeviceName();
+    document.getElementById('currentDevice').textContent = currentDeviceName;
+
+    // 获取所有设备列表
+    const devices = await listDevices();
     
-    try {
-        // TODO: 从WebDAV获取设备列表
-        // 这里需要实现从WebDAV获取设备列表的逻辑
+    // 绑定本地标签页的点击事件
+    const localTab = deviceTabs.querySelector('[data-device-id="local"]');
+    localTab.onclick = async (e) => {
+        e.preventDefault();
+        // 切换标签状态
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        localTab.classList.add('active');
         
-        // 为设备标签添加点击事件
-        deviceTabs.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                
-                // 更新活动标签
-                deviceTabs.querySelectorAll('.nav-link').forEach(l => {
-                    l.classList.remove('active');
-                });
-                link.classList.add('active');
-                
-                // 加载对应设备的标签页
-                const deviceId = link.getAttribute('data-device-id');
-                loadTabs(deviceId);
-            });
+        // 获取并显示本地标签页
+        document.getElementById('currentDevice').textContent = '本地标签页';
+        const tabs = await chrome.tabs.query({});
+        displayTabs({
+            deviceName: '本地',
+            lastSync: new Date().getTime(),
+            tabs: tabs.map(tab => ({
+                title: tab.title,
+                url: tab.url,
+                favIconUrl: tab.favIconUrl
+            }))
         });
-    } catch (error) {
-        console.error('初始化设备标签失败:', error);
-        showStatus('初始化设备标签失败: ' + error.message, 'danger');
+    };
+
+    // 绑定当前设备同步记录标签的点击事件
+    const currentTab = deviceTabs.querySelector('[data-device-id="current"]');
+    currentTab.onclick = async (e) => {
+        e.preventDefault();
+        // 切换标签状态
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        currentTab.classList.add('active');
+        
+        // 获取并显示当前设备的同步记录
+        document.getElementById('currentDevice').textContent = `${currentDeviceName} (同步记录)`;
+        const tabsData = await downloadTabs(currentDeviceName);
+        if (tabsData) {
+            displayTabs(tabsData);
+        }
+    };
+
+    // 创建其他设备的标签
+    for (const device of devices) {
+        if (device !== currentDeviceName) {
+            const li = document.createElement('li');
+            li.className = 'nav-item';
+            const a = document.createElement('a');
+            a.className = 'nav-link';
+            a.href = '#';
+            a.textContent = device;
+            a.dataset.deviceId = device;
+            a.onclick = async (e) => {
+                e.preventDefault();
+                // 切换标签状态
+                document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                a.classList.add('active');
+                
+                // 获取并显示选中设备的标签页
+                document.getElementById('currentDevice').textContent = device;
+                const tabsData = await downloadTabs(device);
+                if (tabsData) {
+                    displayTabs(tabsData);
+                }
+            };
+            li.appendChild(a);
+            deviceTabs.appendChild(li);
+        }
     }
+}
+
+// 初始化页面
+async function initPage() {
+    await initDeviceTabs();
+
+    // 初始加载本地标签页
+    const tabs = await chrome.tabs.query({});
+    document.getElementById('currentDevice').textContent = '本地标签页';
+    displayTabs({
+        deviceName: '本地',
+        lastSync: new Date().getTime(),
+        tabs: tabs.map(tab => ({
+            title: tab.title,
+            url: tab.url,
+            favIconUrl: tab.favIconUrl
+        }))
+    });
 }
 
 // 等待DOM加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     initDeviceTabs();
     loadTabs('current');
-}); 
+});
+
+// 从WebDAV下载标签页数据
+async function downloadTabs(deviceId) {
+    try {
+        const config = await chrome.storage.sync.get('webdavConfig');
+        const { url, username, password, enable_aes, aes_key } = config.webdavConfig;
+
+        if (!url || !username || !password) {
+            throw new Error('WebDAV配置不完整');
+        }
+
+        // 构建文件名和URL
+        const filename = `tabs.${deviceId}.json`;
+        const baseUrl = url.endsWith('/') ? url : url + '/';
+
+        // 下载文件
+        const response = await fetch(baseUrl + filename, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Basic ' + btoa(username + ':' + password)
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`下载失败: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.text();
+
+        try {
+            let tabsData;
+            if (enable_aes && aes_key) {
+                // 解密数据
+                const decrypted = CryptoJS.AES.decrypt(data, aes_key);
+                const jsonStr = decrypted.toString(CryptoJS.enc.Utf8);
+                if (!jsonStr) {
+                    throw new Error('解密失败：密钥错误或数据已损坏');
+                }
+                tabsData = JSON.parse(jsonStr);
+            } else {
+                tabsData = JSON.parse(data);
+            }
+
+            return tabsData;
+        } catch (error) {
+            throw new Error('解析标签页数据失败: ' + error.message);
+        }
+    } catch (error) {
+        console.error('下载标签页失败:', error);
+        showStatus('下载标签页失败: ' + error.message, 'danger');
+        return null;
+    }
+}
+
+// 列出所有设备的标签页文件
+async function listDevices() {
+    try {
+        const config = await chrome.storage.sync.get('webdavConfig');
+        const { url, username, password } = config.webdavConfig;
+
+        if (!url || !username || !password) {
+            throw new Error('WebDAV配置不完整');
+        }
+
+        const baseUrl = url.endsWith('/') ? url : url + '/';
+
+        // 获取目录列表
+        const response = await fetch(baseUrl, {
+            method: 'PROPFIND',
+            headers: {
+                'Authorization': 'Basic ' + btoa(username + ':' + password),
+                'Depth': '1'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`获取设备列表失败: ${response.status} ${response.statusText}`);
+        }
+
+        const text = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, 'text/xml');
+        const responses = xmlDoc.getElementsByTagName('d:response');
+        
+        const devices = [];
+        for (const resp of responses) {
+            const href = resp.getElementsByTagName('d:href')[0].textContent;
+            const filename = decodeURIComponent(href.split('/').pop());
+            if (filename.startsWith('tabs.') && filename.endsWith('.json')) {
+                const deviceName = filename.replace('tabs.', '').replace('.json', '');
+                devices.push(deviceName);
+            }
+        }
+
+        return devices;
+    } catch (error) {
+        console.error('获取设备列表失败:', error);
+        showStatus('获取设备列表失败: ' + error.message, 'danger');
+        return [];
+    }
+}
+
+// 显示标签页列表
+function displayTabs(tabsData) {
+    const tabList = document.getElementById('tabList');
+    const lastSync = document.getElementById('lastSync');
+
+    if (!tabsData || !tabsData.tabs || tabsData.tabs.length === 0) {
+        tabList.innerHTML = '<div class="no-tabs">暂无标签页</div>';
+        return;
+    }
+
+    lastSync.textContent = tabsData.lastSync ? formatDateTime(tabsData.lastSync) : '未知';
+    
+    tabList.innerHTML = '';
+    tabsData.tabs.forEach(tab => {
+        tabList.appendChild(createTabElement(tab));
+    });
+}
+
+// 创建标签页元素
+function createTabElement(tab) {
+    const div = document.createElement('div');
+    div.className = 'tab-item';
+
+    const icon = document.createElement('div');
+    icon.className = 'tab-icon';
+    if (tab.favIconUrl) {
+        icon.style.backgroundImage = `url('${tab.favIconUrl}')`;
+    } else {
+        icon.classList.add('default');
+    }
+
+    const title = document.createElement('a');
+    title.className = 'tab-title';
+    title.href = tab.url;
+    title.target = '_blank';
+    title.textContent = tab.title || tab.url;
+
+    const url = document.createElement('a');
+    url.className = 'tab-url';
+    url.href = tab.url;
+    url.target = '_blank';
+    url.textContent = tab.url;
+
+    div.appendChild(icon);
+    div.appendChild(title);
+    div.appendChild(url);
+
+    return div;
+} 

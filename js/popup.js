@@ -34,19 +34,9 @@ function openOptionsPage() {
     chrome.runtime.openOptionsPage();
 }
 
-// 打开标签页同步
-function openTabs() {
-    chrome.tabs.create({ url: 'tabs.html' });
-}
-
-// 打开书签同步
-function openBookmarks() {
-    chrome.tabs.create({ url: 'bookmarks.html' });
-}
-
-// 打开Markdown编辑
-function openMdEdit() {
-    chrome.tabs.create({ url: 'md-edit.html' });
+// 打开功能页面
+function openFeaturePage(page) {
+    chrome.tabs.create({ url: `${page}.html` });
 }
 
 // 初始化
@@ -56,7 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 绑定按钮事件
     document.getElementById('openOptions').addEventListener('click', openOptionsPage);
-    document.getElementById('openTabs').addEventListener('click', openTabs);
-    document.getElementById('openBookmarks').addEventListener('click', openBookmarks);
-    document.getElementById('openMdEdit').addEventListener('click', openMdEdit);
+    
+    // 使用统一的函数处理所有功能页面的打开
+    const featureButtons = {
+        'openTabs': 'tabs',
+        'openBookmarks': 'bookmarks',
+        'openMdEdit': 'md-edit',
+        'openHistory': 'history'
+    };
+
+    Object.entries(featureButtons).forEach(([buttonId, pageName]) => {
+        document.getElementById(buttonId)?.addEventListener('click', () => openFeaturePage(pageName));
+    });
 }); 

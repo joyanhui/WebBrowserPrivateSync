@@ -6,7 +6,7 @@
     <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
     <style>
         body {
-            width: 320px;
+            width: 420px;
             padding: 15px;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
@@ -129,6 +129,10 @@
         
         <ul class="feature-list">
             <li class="feature-item">
+                <div class="feature-icon">🔒</div>
+                <span>数据加密储存</span>
+            </li>
+            <li class="feature-item">
                 <div class="feature-icon">⧉</div>
                 <span>标签页跨设备同步</span>
             </li>
@@ -137,8 +141,20 @@
                 <span>书签数据同步管理</span>
             </li>
             <li class="feature-item">
+                <div class="feature-icon">⌚</div>
+                <span>历史记录同步管理</span>
+            </li>
+            <li class="feature-item">
                 <div class="feature-icon">✎</div>
                 <span>Markdown笔记编辑</span>
+            </li>
+            <li class="feature-item">
+                <div class="feature-icon">🍪</div>
+                <span>Cookie和local storage 跨设备同步(未实现)</span>
+            </li>
+            <li class="feature-item">
+                <div class="feature-icon">🔑</div>
+                <span>密码跨设备同步(未实现)</span>
             </li>
         </ul>
     </div>
@@ -157,6 +173,9 @@
         </button>
         <button class="feature-btn" id="openBookmarks">
             <i>★</i>书签同步
+        </button>
+        <button class="feature-btn" id="openHistory">
+            <i>⌚</i>历史记录
         </button>
         <button class="feature-btn" id="openMdEdit">
             <i>✎</i>Markdown编辑

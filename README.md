@@ -2,11 +2,15 @@
 
 # Completed
 
+- Browser tabs sysnc
+
 # Optimized function
 
 - notepad(*.md) edit over cloud storage
 - webdav Storage
 - setting import and export
+- Browser history sync
+- Browser bookmarks sync
 
 # Functions in and testing
 
@@ -14,11 +18,9 @@
 # todo list
 
 - s3 Storage
-- Browser tabs sysnc
 - Browser password
 - Browser cookies
 - Browser Local storage
-- Browser history
 - md editor with preview and highlighting
 
 
