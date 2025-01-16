@@ -91,25 +91,27 @@
 
         <!-- 添加备份设置 -->
         <div class="backup-settings">
-            <h5 class="mb-3">Backup Settings</h5>
+            <h3>备份设置</h3>
             <div class="mb-3">
-                <label for="backup_filename" class="form-label">Database Filename</label>
-                <input type="text" class="form-control" id="backup_filename" value="bookmarks.json">
-                <div class="form-text">同步到WebDAV的书签数据库文件名</div>
+                <label for="database_filename" class="form-label">数据库文件名</label>
+                <input type="text" class="form-control" id="database_filename" value="bookmarks.json">
             </div>
-            
-            <div class="form-check mb-3">
+            <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="auto_backup">
-                <label class="form-check-label" for="auto_backup">
-                    自动创建备份副本
-                </label>
-                <div class="form-text">在WebDAV中自动保存历史备份文件</div>
+                <label class="form-check-label" for="auto_backup">启用自动备份</label>
             </div>
-            
             <div class="mb-3">
-                <label for="backup_interval" class="form-label">备份间隔（天）</label>
-                <input type="number" class="form-control" id="backup_interval" min="1" value="7">
-                <div class="form-text">自动创建新备份的间隔天数</div>
+                <label for="backup_interval" class="form-label">备份间隔(天)</label>
+                <input type="number" class="form-control" id="backup_interval" value="7" min="1">
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="enable_auto_sync">
+                <label class="form-check-label" for="enable_auto_sync">启用自动同步</label>
+            </div>
+            <div class="mb-3">
+                <label for="sync_interval" class="form-label">同步间隔(秒)</label>
+                <input type="number" class="form-control" id="sync_interval" value="300" min="30">
+                <div class="form-text">最小间隔30秒</div>
             </div>
         </div>
 
@@ -139,5 +141,6 @@
 
     <script src="js/crypto-js.min.js"></script>
     <script src="js/options.js"></script>
+    <script src="js/options-init.js"></script>
 </body>
 </html> 

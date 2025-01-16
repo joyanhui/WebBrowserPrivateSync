@@ -386,7 +386,11 @@ async function importToFolder(bookmarks, folderId) {
 }
 
 // 监听同步事件
-document.addEventListener('bookmarkSync', syncBookmarks);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'syncBookmarks') {
+        syncBookmarks();
+    }
+});
 
 // 监听导入事件
 document.addEventListener('bookmarkImport', importBookmarks);
