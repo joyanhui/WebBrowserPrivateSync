@@ -121,7 +121,7 @@ async function downloadBookmarks() {
     }
 }
 
-// 根据路径查找书签文件夹
+// 根据路径查找书签文件夹,如果不存在则创建
 async function findBookmarkFolder(path) {
     const tree = await chrome.bookmarks.getTree();
     const parts = path.split('/').filter(p => p); // 移除空字符串
@@ -130,9 +130,14 @@ async function findBookmarkFolder(path) {
     for (const part of parts) {
         const found = current.children?.find(node => node.title === part);
         if (!found) {
-            throw new Error(`找不到书签文件夹: ${path}`);
+            // 如果文件夹不存在,则创建
+            current = await chrome.bookmarks.create({
+                parentId: current.id,
+                title: part
+            });
+        } else {
+            current = found;
         }
-        current = found;
     }
     return current;
 }
@@ -161,7 +166,156 @@ async function exportBookmarks() {
     }
 }
 
-// 从WebDAV导入书签
+// 合并书签
+async function mergeBookmarks(remoteBookmarks, localFolder) {
+    // 获取本地书签
+    const localBookmarks = formatBookmarkData(localFolder);
+    
+    // 创建URL到书签的映射
+    const urlMap = new Map();
+    
+    // 递归处理书签,构建URL映射
+    function processBookmarks(bookmarks, isRemote = false) {
+        if (!bookmarks) return;
+        
+        if (bookmarks.url) {
+            const existing = urlMap.get(bookmarks.url);
+            if (!existing || (isRemote && bookmarks.dateAdded > existing.dateAdded)) {
+                urlMap.set(bookmarks.url, {
+                    ...bookmarks,
+                    isRemote
+                });
+            }
+        }
+        
+        if (bookmarks.children) {
+            for (const child of bookmarks.children) {
+                processBookmarks(child, isRemote);
+            }
+        }
+    }
+    
+    // 处理本地和远程书签
+    processBookmarks(localBookmarks, false);
+    processBookmarks(remoteBookmarks, true);
+    
+    // 构建合并后的书签树
+    function buildMergedTree(bookmarks) {
+        if (!bookmarks) return null;
+        
+        if (bookmarks.url) {
+            const merged = urlMap.get(bookmarks.url);
+            return merged;
+        }
+        
+        const result = {
+            title: bookmarks.title,
+            children: []
+        };
+        
+        if (bookmarks.children) {
+            for (const child of bookmarks.children) {
+                const mergedChild = buildMergedTree(child);
+                if (mergedChild) {
+                    result.children.push(mergedChild);
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    // 返回合并后的书签树
+    return buildMergedTree(remoteBookmarks);
+}
+
+// 同步书签
+async function syncBookmarks() {
+    try {
+        showStatus('正在同步书签...', 'info');
+        
+        // 获取配置的同步路径
+        const config = await chrome.storage.sync.get(['bookmarkConfig']);
+        if (!config.bookmarkConfig?.sync_path) {
+            throw new Error('未配置同步路径');
+        }
+
+        // 查找指定路径的书签文件夹
+        const targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
+        
+        // 从WebDAV下载书签
+        let remoteBookmarks = await downloadBookmarks();
+        
+        // 确保remoteBookmarks有正确的结构
+        if (!remoteBookmarks) {
+            remoteBookmarks = {
+                title: targetFolder.title,
+                children: []
+            };
+        } else if (!remoteBookmarks.children) {
+            remoteBookmarks.children = [];
+        }
+        
+        // 获取本地书签
+        const localBookmarks = formatBookmarkData(targetFolder);
+        
+        // 创建ID到书签的映射
+        const remoteMap = new Map();
+        const localMap = new Map();
+        
+        // 递归处理书签,构建ID映射
+        function buildBookmarkMap(bookmarks, map) {
+            if (!bookmarks) return;
+            
+            if (bookmarks.url) {
+                map.set(bookmarks.id, bookmarks);
+            }
+            
+            if (bookmarks.children) {
+                for (const child of bookmarks.children) {
+                    buildBookmarkMap(child, map);
+                }
+            }
+        }
+        
+        buildBookmarkMap(remoteBookmarks, remoteMap);
+        buildBookmarkMap(localBookmarks, localMap);
+        
+        // 处理删除的书签
+        for (const [id, localBookmark] of localMap) {
+            if (!remoteMap.has(id)) {
+                // 本地存在但远程不存在的书签,需要上传到远程
+                if (localBookmark.url) {
+                    remoteBookmarks.children.push(localBookmark);
+                }
+            }
+        }
+        
+        // 处理新增的书签
+        for (const [id, remoteBookmark] of remoteMap) {
+            if (!localMap.has(id)) {
+                // 远程存在但本地不存在的书签,需要在本地创建
+                if (remoteBookmark.url) {
+                    await chrome.bookmarks.create({
+                        parentId: targetFolder.id,
+                        title: remoteBookmark.title,
+                        url: remoteBookmark.url
+                    });
+                }
+            }
+        }
+        
+        // 上传更新后的书签到WebDAV
+        await uploadBookmarks(targetFolder);
+        
+        showStatus('书签同步成功', 'success');
+    } catch (error) {
+        console.error('同步书签失败:', error);
+        showStatus('同步失败: ' + error.message, 'danger');
+    }
+}
+
+// 从WebDAV导入书签 (完全覆盖本地)
 async function importBookmarks() {
     try {
         showStatus('正在导入书签...', 'info');
@@ -176,10 +330,10 @@ async function importBookmarks() {
         const targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
         
         // 从WebDAV下载书签
-        const bookmarks = await downloadBookmarks();
+        const remoteBookmarks = await downloadBookmarks();
         
-        // 导入书签到指定文件夹
-        await importToFolder(bookmarks, targetFolder.id);
+        // 导入书签到指定文件夹 (会清空原有内容)
+        await importToFolder(remoteBookmarks, targetFolder.id);
         
         showStatus('书签导入成功', 'success');
     } catch (error) {
@@ -231,8 +385,8 @@ async function importToFolder(bookmarks, folderId) {
     }
 }
 
-// 监听导出事件
-document.addEventListener('bookmarkExport', exportBookmarks);
+// 监听同步事件
+document.addEventListener('bookmarkSync', syncBookmarks);
 
 // 监听导入事件
 document.addEventListener('bookmarkImport', importBookmarks);

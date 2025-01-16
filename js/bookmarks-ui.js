@@ -18,6 +18,11 @@ async function initializeUI() {
             document.dispatchEvent(new CustomEvent('bookmarkImport'));
         });
         
+        // 添加同步按钮事件监听
+        document.getElementById('syncBtn').addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('bookmarkSync'));
+        });
+        
     } catch (error) {
         console.error('初始化UI失败:', error);
         showStatus('初始化失败: ' + error.message, 'danger');
