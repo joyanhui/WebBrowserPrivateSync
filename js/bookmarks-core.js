@@ -1,16 +1,23 @@
 // 格式化书签数据
-function formatBookmarkData(node) {
+ function formatBookmarkData(node) {
     if (!node) return null;
     
     const result = {
+        id: node.id,
         title: node.title,
-        url: node.url,
         dateAdded: node.dateAdded,
-        id: node.id
+        type: node.url ? 'bookmark' : 'folder'
     };
 
+    // 如果是书签，添加URL
+    if (node.url) {
+        result.url = node.url;
+    }
+
+    // 如果有子节点，递归处理
     if (node.children) {
-        result.children = node.children.map(child => formatBookmarkData(child))
+        result.children = node.children
+            .map(child => formatBookmarkData(child))
             .filter(item => item !== null);
     }
 
@@ -183,9 +190,8 @@ async function syncBookmarks(targetFolder) {
             function buildBookmarkMap(bookmarks, map) {
                 if (!bookmarks) return;
                 
-                if (bookmarks.url) {
-                    map.set(bookmarks.id, bookmarks);
-                }
+                // 将所有节点（包括文件夹）都加入映射
+                map.set(bookmarks.id, bookmarks);
                 
                 if (bookmarks.children) {
                     for (const child of bookmarks.children) {
@@ -197,30 +203,45 @@ async function syncBookmarks(targetFolder) {
             buildBookmarkMap(remoteBookmarks, remoteMap);
             buildBookmarkMap(localBookmarks, localMap);
             
-            // 处理删除的书签
-            for (const [id, localBookmark] of localMap) {
+            // 处理本地新增的节点
+            for (const [id, localNode] of localMap) {
                 if (!remoteMap.has(id)) {
-                    // 本地存在但远程不存在的书签,需要上传到远程
-                    if (localBookmark.url) {
-                        remoteBookmarks.children.push(localBookmark);
+                    // 本地存在但远程不存在的节点，需要添加到远程
+                    let parentNode = remoteBookmarks;
+                    if (localNode.parentId) {
+                        const parent = remoteMap.get(localNode.parentId);
+                        if (parent) {
+                            parentNode = parent;
+                            if (!parentNode.children) {
+                                parentNode.children = [];
+                            }
+                        }
                     }
+                    parentNode.children.push(localNode);
                 }
             }
             
-            // 处理新增的书签
-            for (const [id, remoteBookmark] of remoteMap) {
+            // 处理远程新增的节点
+            for (const [id, remoteNode] of remoteMap) {
                 if (!localMap.has(id)) {
-                    // 远程存在但本地不存在的书签,需要在本地创建
-                    if (remoteBookmark.url) {
-                        try {
+                    // 远程存在但本地不存在的节点，需要在本地创建
+                    try {
+                        if (remoteNode.type === 'folder') {
+                            // 创建文件夹
                             await chrome.bookmarks.create({
                                 parentId: targetFolder.id,
-                                title: remoteBookmark.title,
-                                url: remoteBookmark.url
+                                title: remoteNode.title
                             });
-                        } catch (error) {
-                            console.error(`创建书签失败: ${remoteBookmark.title}`, error);
+                        } else {
+                            // 创建书签
+                            await chrome.bookmarks.create({
+                                parentId: targetFolder.id,
+                                title: remoteNode.title,
+                                url: remoteNode.url
+                            });
                         }
+                    } catch (error) {
+                        console.error(`创建节点失败: ${remoteNode.title}`, error);
                     }
                 }
             }

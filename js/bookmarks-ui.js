@@ -1,5 +1,3 @@
-import { syncBookmarks } from './bookmarks-core.js';
-
 // 显示状态信息
 function showStatus(message, type = 'info') {
     const status = document.getElementById('status');
@@ -28,10 +26,10 @@ async function exportBookmarks() {
         }
 
         // 查找指定路径的书签文件夹
-        const bookmarkFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
+        const bookmarkFolder = await BookmarksCore.findBookmarkFolder(config.bookmarkConfig.sync_path);
         
         // 上传到WebDAV
-        await uploadBookmarks(bookmarkFolder);
+        await BookmarksCore.uploadBookmarks(bookmarkFolder);
         
         showStatus('书签导出成功', 'success');
     } catch (error) {
@@ -52,10 +50,10 @@ async function importBookmarks() {
         }
 
         // 查找指定路径的书签文件夹
-        const targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
+        const targetFolder = await BookmarksCore.findBookmarkFolder(config.bookmarkConfig.sync_path);
         
         // 从WebDAV下载书签
-        const remoteBookmarks = await downloadBookmarks();
+        const remoteBookmarks = await BookmarksCore.downloadBookmarks();
         
         // 导入书签到指定文件夹 (会清空原有内容)
         await importToFolder(remoteBookmarks, targetFolder.id);
@@ -67,11 +65,68 @@ async function importBookmarks() {
     }
 }
 
-// UI同步函数
-async function uiSyncBookmarks() {
+// 导入书签到指定文件夹
+async function importToFolder(bookmarks, folderId) {
+    // 清空目标文件夹
+    const children = await chrome.bookmarks.getChildren(folderId);
+    for (const child of children) {
+        await chrome.bookmarks.removeTree(child.id);
+    }
+
+    // 递归创建书签
+    async function createBookmarkRecursive(data, parentId) {
+        if (!data) return;
+
+        if (data.type === 'bookmark') {
+            // 创建书签
+            await chrome.bookmarks.create({
+                parentId: parentId,
+                title: data.title || '未命名书签',
+                url: data.url
+            });
+        } else {
+            // 创建文件夹
+            const folder = await chrome.bookmarks.create({
+                parentId: parentId,
+                title: data.title || '未命名文件夹'
+            });
+            
+            // 递归处理子项
+            if (data.children) {
+                for (const child of data.children) {
+                    await createBookmarkRecursive(child, folder.id);
+                }
+            }
+        }
+    }
+
+    // 导入书签
+    if (bookmarks.children) {
+        for (const child of bookmarks.children) {
+            await createBookmarkRecursive(child, folderId);
+        }
+    } else {
+        await createBookmarkRecursive(bookmarks, folderId);
+    }
+}
+
+// 双向同步书签
+async function syncBookmarks() {
     try {
         showStatus('正在同步书签...', 'info');
-        await syncBookmarks();
+        
+        // 获取配置的同步路径
+        const config = await chrome.storage.sync.get(['bookmarkConfig']);
+        if (!config.bookmarkConfig?.sync_path) {
+            throw new Error('未配置同步路径');
+        }
+
+        // 查找指定路径的书签文件夹
+        const targetFolder = await BookmarksCore.findBookmarkFolder(config.bookmarkConfig.sync_path);
+        
+        // 执行同步
+        await BookmarksCore.syncBookmarks(targetFolder);
+        
         showStatus('书签同步成功', 'success');
     } catch (error) {
         console.error('同步书签失败:', error);
@@ -79,26 +134,9 @@ async function uiSyncBookmarks() {
     }
 }
 
-// 初始化UI
-function initializeUI() {
-    // 同步按钮
-    const syncBtn = document.getElementById('syncBtn');
-    if (syncBtn) {
-        syncBtn.addEventListener('click', uiSyncBookmarks);
-    }
-
-    // 导出按钮
-    const exportBtn = document.getElementById('exportBtn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportBookmarks);
-    }
-
-    // 导入按钮
-    const importBtn = document.getElementById('importBtn');
-    if (importBtn) {
-        importBtn.addEventListener('click', importBookmarks);
-    }
-}
-
-// 当DOM加载完成时初始化UI
-document.addEventListener('DOMContentLoaded', initializeUI); 
+// 事件监听
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('syncBtn').addEventListener('click', syncBookmarks);
+    document.getElementById('exportBtn').addEventListener('click', exportBookmarks);
+    document.getElementById('importBtn').addEventListener('click', importBookmarks);
+}); 

@@ -1,15 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Options</title>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <title>设置</title>
     <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
     <style>
         body {
             padding: 20px;
+            background-color: #f8f9fa;
         }
         .container {
             max-width: 800px;
+        }
+        .settings-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .bookmark-path {
             background: #f8f9fa;
@@ -19,9 +27,11 @@
             border: 1px solid #dee2e6;
         }
         .config-actions {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #dee2e6;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .config-actions .btn-group {
             display: flex;
@@ -30,41 +40,101 @@
         #config-file-input {
             display: none;
         }
-        .form-check {
-            margin-top: 10px;
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
         }
-        .settings-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 15px;
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            padding: 10px 20px;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+        .nav-tabs .nav-link:hover {
+            border-color: transparent;
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            font-weight: bold;
+            border-bottom: 2px solid #0d6efd;
+            margin-bottom: -2px;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #333;
+        }
+        .form-text {
+            color: #6c757d;
+        }
+        .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        .btn-outline-primary {
+            color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .btn-outline-primary:hover {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .section-title {
+            color: #0d6efd;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- 导航标签 -->
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link" href="md-edit.html">md编辑器</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="tabs.html">标签页同步</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="bookmarks.html">书签同步</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="options.html">设置</a>
+            </li>
+        </ul>
+
         <!-- WebDAV服务设置 -->
-        <h2 class="mb-4">WebDAV Service Settings</h2>
         <div class="settings-section">
+            <h3 class="section-title">WebDAV服务设置</h3>
             <div class="mb-3">
                 <label for="webdav_url" class="form-label">WebDAV URL</label>
                 <input type="url" class="form-control" id="webdav_url">
             </div>
             <div class="mb-3">
-                <label for="webdav_username" class="form-label">Username</label>
+                <label for="webdav_username" class="form-label">用户名</label>
                 <input type="text" class="form-control" id="webdav_username">
             </div>
             <div class="mb-3">
-                <label for="webdav_password" class="form-label">Password</label>
+                <label for="webdav_password" class="form-label">密码</label>
                 <input type="password" class="form-control" id="webdav_password">
             </div>
 
             <div class="mb-3">
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="enable_aes">
-                    <label class="form-check-label" for="enable_aes">
-                        启用AES加密
-                    </label>
+                    <label class="form-check-label" for="enable_aes">启用AES加密</label>
                     <div class="form-text">对备份到WebDAV的数据进行AES加密（md文件除外）</div>
                 </div>
             </div>
@@ -82,8 +152,8 @@
         </div>
 
         <!-- 通用设置 -->
-        <h2 class="mb-4 mt-5">General Settings</h2>
         <div class="settings-section">
+            <h3 class="section-title">通用设置</h3>
             <div class="mb-3">
                 <label for="device_name" class="form-label">设备名</label>
                 <input type="text" class="form-control" id="device_name" placeholder="请输入设备名称">
@@ -92,11 +162,11 @@
         </div>
 
         <!-- 书签设置 -->
-        <h2 class="mb-4 mt-5">Bookmark Settings</h2>
         <div class="settings-section">
+            <h3 class="section-title">书签设置</h3>
             <div class="mb-3">
-                <label class="form-label">Sync Path</label>
-                <button id="select-folder" class="btn btn-outline-primary">Select Folder</button>
+                <label class="form-label">同步路径</label>
+                <button id="select-folder" class="btn btn-outline-primary">选择文件夹</button>
                 <div id="selected-path" class="bookmark-path">
                     /Bookmarks bar/
                 </div>
@@ -131,8 +201,8 @@
         </div>
 
         <!-- 标签页设置 -->
-        <h2 class="mb-4 mt-5">Tab Settings</h2>
         <div class="settings-section">
+            <h3 class="section-title">标签页设置</h3>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="enable_tabs_sync">
                 <label class="form-check-label" for="enable_tabs_sync">启用标签页同步（自动同步到 tabs.[device_name].json）</label>
@@ -145,26 +215,26 @@
             </div>
         </div>
 
-        <div class="mt-4">
-            <button id="save" class="btn btn-primary">Save</button>
+        <!-- 保存按钮 -->
+        <div class="settings-section">
+            <button id="save" class="btn btn-primary">保存设置</button>
+            <div id="status" class="alert mt-3" style="display: none;"></div>
         </div>
         
-        <div id="status" class="alert mt-3" style="display: none;"></div>
-
-        <!-- 配置导入导出部分 -->
+        <!-- 配置导入导出 -->
         <div class="config-actions">
-            <h3 class="mb-3">Configuration Management</h3>
+            <h3 class="section-title">配置管理</h3>
             <div class="btn-group">
                 <button id="export-config" class="btn btn-outline-primary">
-                    <i class="bi bi-download"></i> Export Settings
+                    导出配置
                 </button>
                 <input type="file" id="config-file-input" accept=".json">
-                <button id="import-config" class="btn btn-outline-secondary">
-                    <i class="bi bi-upload"></i> Import Settings
+                <button id="import-config" class="btn btn-outline-primary">
+                    导入配置
                 </button>
             </div>
-            <div class="text-muted mt-2">
-                <small>Settings will be saved as WebBrowserPrivateSync-setting.json</small>
+            <div class="form-text mt-2">
+                配置文件将保存为 WebBrowserPrivateSync-setting.json
             </div>
         </div>
     </div>

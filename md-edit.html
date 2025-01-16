@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Markdown编辑器</title>
+    <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            min-width: 800px;
+            background-color: #f8f9fa;
+        }
+        
+        .main-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            min-height: calc(100vh - 140px);
+        }
+        
+        .sidebar {
+            width: 200px;
+            border-right: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+            border-radius: 8px 0 0 8px;
+        }
+        
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .file-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .file-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .file-list::-webkit-scrollbar-thumb {
+            background: #0d6efd;
+            border-radius: 3px;
+            opacity: 0.5;
+        }
+        
+        .editor {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            background: white;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .editor textarea {
+            flex: 1;
+            resize: none;
+            margin: 10px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .file-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            color: #333;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+        
+        .file-item:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            padding: 10px 20px;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            border-color: transparent;
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            font-weight: bold;
+            border-bottom: 2px solid #0d6efd;
+            margin-bottom: -2px;
+        }
+        
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background-color: #bb2d3b;
+            border-color: #b02a37;
+        }
+        
+        .input-group-text {
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航标签 -->
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" href="md-edit.html">md编辑器</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="tabs.html">标签页同步</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="bookmarks.html">书签同步</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="options.html">设置</a>
+            </li>
+        </ul>
+
+        <h2 class="mb-4">Markdown编辑器</h2>
+
+        <div class="main-container">
+            <div class="sidebar">
+                <div class="file-list" id="file-list">
+                    <!-- 文件列表将通过JS动态加载 -->
+                </div>
+                <div class="d-grid gap-2 p-2">
+                    <button id="new-file" class="btn btn-primary">新建文件</button>
+                </div>
+            </div>
+            <div class="editor">
+                <div class="input-group">
+                    <input type="text" id="filename" class="form-control" placeholder="请输入文件名">
+                    <span class="input-group-text">.md</span>
+                </div>
+                <textarea id="markdown-editor" class="form-control" placeholder="在此输入Markdown内容..."></textarea>
+                <div class="d-flex gap-2 mt-2">
+                    <button id="save" class="btn btn-primary">保存</button>
+                    <button id="delete" class="btn btn-danger">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/md-edit.js"></script>
+</body>
+</html> 

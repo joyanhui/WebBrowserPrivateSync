@@ -2,203 +2,123 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>index</title>
+    <title>WebBrowser Private Sync</title>
     <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/popup.css">
     <style>
-        :root {
-            --primary-blue: #1a73e8;
-            --dark-blue: #1557b0;
-            --light-blue: #e8f0fe;
-            --hover-blue: #f8faff;
-            --text-color: #1f1f1f;
-        }
-        
         body {
-            width: 800px;
-            height: 600px;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: var(--light-blue);
+            width: 320px;
+            padding: 15px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
-        
-        .main-container {
-            flex: 1;
-            display: flex;
-            min-height: 0;
-            background: #fff;
-            box-shadow: 0 0 20px rgba(26, 115, 232, 0.1);
+        .welcome-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(13, 110, 253, 0.15);
+            text-align: center;
+            margin-bottom: 15px;
+            border: 1px solid rgba(13, 110, 253, 0.1);
         }
-        
-        .sidebar {
-            width: 200px;
-            border-right: 1px solid rgba(26, 115, 232, 0.2);
-            display: flex;
-            flex-direction: column;
-            background: var(--light-blue);
+        .welcome-title {
+            color: #0d6efd;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.2em;
         }
-        
-        .file-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
+        .welcome-text {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            line-height: 1.5;
         }
-        
-        .file-list::-webkit-scrollbar {
-            width: 6px;
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            text-align: left;
         }
-        
-        .file-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        .file-list::-webkit-scrollbar-thumb {
-            background: var(--primary-blue);
-            border-radius: 3px;
-            opacity: 0.5;
-        }
-        
-        .editor {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 10px;
-            background: #fff;
-        }
-        
-        .editor textarea {
-            flex: 1;
-            resize: none;
-            margin: 10px 0;
-            border-color: rgba(26, 115, 232, 0.2);
-            box-shadow: 0 0 10px rgba(26, 115, 232, 0.05);
-            color: var(--text-color);
-            font-size: 14px;
-            line-height: 1.6;
-            background-color: #ffffff;
-        }
-        
-        .bottom-buttons {
-            padding: 10px;
-            border-top: 1px solid rgba(26, 115, 232, 0.2);
-            background: var(--light-blue);
-        }
-        
-        .file-item {
+        .feature-item {
             padding: 8px 12px;
-            cursor: pointer;
+            margin-bottom: 8px;
+            background: rgba(13, 110, 253, 0.05);
+            border-radius: 6px;
+            color: #333;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+        }
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(13, 110, 253, 0.1);
             border-radius: 4px;
-            color: var(--text-color);
-            transition: all 0.2s ease;
-            font-size: 14px;
+            color: #0d6efd;
         }
-        
-        .file-item:hover {
-            background-color: var(--hover-blue);
-            box-shadow: 0 0 8px rgba(26, 115, 232, 0.15);
+        .setup-container {
+            display: none;
+            text-align: center;
         }
-        
-        .btn-primary {
-            background-color: var(--primary-blue);
-            border-color: var(--primary-blue);
-            box-shadow: 0 2px 6px rgba(26, 115, 232, 0.2);
+        .setup-container.show {
+            display: block;
         }
-        
-        .btn-primary:hover {
-            background-color: var(--dark-blue);
-            border-color: var(--dark-blue);
-            box-shadow: 0 4px 8px rgba(26, 115, 232, 0.3);
+        .btn-setup {
+            background: #0d6efd;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s ease;
         }
-        
-        .btn-secondary {
-            background-color: #fff;
-            border-color: var(--primary-blue);
-            color: var(--primary-blue);
-            box-shadow: 0 2px 6px rgba(26, 115, 232, 0.1);
+        .btn-setup:hover {
+            background: #0b5ed7;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
         }
-        
-        .btn-secondary:hover {
-            background-color: var(--hover-blue);
-            border-color: var(--dark-blue);
-            color: var(--dark-blue);
-            box-shadow: 0 4px 8px rgba(26, 115, 232, 0.2);
-        }
-        
-        .input-group {
-            box-shadow: 0 2px 6px rgba(26, 115, 232, 0.1);
-        }
-        
-        .input-group-text {
-            background-color: var(--light-blue);
-            border-color: rgba(26, 115, 232, 0.2);
-            color: var(--primary-blue);
-        }
-        
-        .form-control:focus {
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.25);
-        }
-        
-        .input-group input {
-            color: var(--text-color) !important;
-            font-size: 14px;
-        }
-        
-        .form-control::placeholder {
-            color: #666666;
-            opacity: 0.8;
-        }
-        
-        .editor textarea::selection {
-            background-color: rgba(26, 115, 232, 0.2);
-            color: var(--dark-blue);
-        }
-        
-        .editor textarea:focus {
-            background-color: #ffffff;
-            color: var(--text-color);
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.25);
+        .status {
+            display: none;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            background: white;
+            border: 1px solid rgba(13, 110, 253, 0.2);
         }
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <div class="sidebar">
-            <div class="file-list" id="file-list">
-                <!-- 文件列表将通过JS动态加载 -->
-            </div>
-            <div class="d-grid gap-2 p-2">
-                <button id="new-file" class="btn btn-primary">New File</button>
-            </div>
-        </div>
-        <div class="editor">
-            <div class="input-group">
-                <input type="text" id="filename" class="form-control" placeholder="请输入文件名">
-                <span class="input-group-text">.md</span>
-            </div>
-            <textarea id="markdown-editor" class="form-control"></textarea>
-            <div class="d-flex gap-2">
-                <button id="save" class="btn btn-primary">Save</button>
-                <button id="delete" class="btn btn-danger">Delete</button>
-            </div>
-        </div>
+    <div class="welcome-container">
+        <div class="welcome-title">WebBrowser Private Sync</div>
+        <div class="welcome-text">安全、私密的浏览器数据同步工具</div>
+        
+        <ul class="feature-list">
+            <li class="feature-item">
+                <div class="feature-icon">⧉</div>
+                <span>标签页跨设备同步</span>
+            </li>
+            <li class="feature-item">
+                <div class="feature-icon">★</div>
+                <span>书签数据同步管理</span>
+            </li>
+            <li class="feature-item">
+                <div class="feature-icon">✎</div>
+                <span>Markdown笔记编辑</span>
+            </li>
+        </ul>
     </div>
+
+    <div id="status" class="status"></div>
     
-    <!-- 底部按钮 -->
-    <div class="bottom-buttons">
-        <div class="d-flex justify-content-center gap-2">
-            <button id="open-options" class="btn btn-secondary">Settings</button>
-            <button id="open-bookmarks" class="btn btn-secondary">Bookmarks</button>
-            <button id="open-tabs" class="btn btn-secondary">Tabs</button>
-        </div>
+    <div id="setupContainer" class="setup-container">
+        <button id="openOptions" class="btn btn-setup">
+            配置WebDAV服务
+        </button>
     </div>
 
     <script src="js/popup.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/popup-init.js"></script>
 </body>
-</html> 
 </html> 

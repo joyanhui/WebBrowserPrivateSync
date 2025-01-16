@@ -169,6 +169,9 @@ async function importConfig(file) {
         
         // 保存配置
         await chrome.storage.sync.set(config);
+        // 强制关闭自动同步和自动备份
+        config.bookmarkConfig.enable_auto_sync = false;
+        config.bookmarkConfig.auto_backup = false;
         
         // 更新界面
         document.getElementById('webdav_url').value = config.webdavConfig.url;
@@ -176,13 +179,13 @@ async function importConfig(file) {
         document.getElementById('webdav_password').value = config.webdavConfig.password;
         document.getElementById('selected-path').textContent = config.bookmarkConfig.sync_path;
         document.getElementById('database_filename').value = config.bookmarkConfig.database_filename;
-        document.getElementById('auto_backup').checked = config.bookmarkConfig.auto_backup;
+        document.getElementById('auto_backup').checked = config.bookmarkConfig.auto_backup;//自动备份 强制关闭
         document.getElementById('backup_interval').value = config.bookmarkConfig.backup_interval;
-        document.getElementById('enable_auto_sync').checked = config.bookmarkConfig.enable_auto_sync;
+        document.getElementById('enable_auto_sync').checked = config.bookmarkConfig.enable_auto_sync;//自动同步 强制关闭
         document.getElementById('sync_interval').value = config.bookmarkConfig.sync_interval;
         
         const status = document.getElementById('status');
-        status.textContent = '配置已成功导入';
+        status.textContent = '配置已成功导入,自动同步和自动备份已强制关闭 如需要 请手动打开';
         status.className = 'alert alert-success mt-3';
         status.style.display = 'block';
         setTimeout(() => {

@@ -98,112 +98,151 @@ async function deleteTabFile(filename) {
 // UI相关函数
 function showStatus(message, type = 'info') {
     const status = document.getElementById('status');
-    status.textContent = message;
-    status.className = `alert alert-${type} status`;
-    status.style.display = 'block';
-    
-    if (type !== 'danger') {
-        setTimeout(() => {
-            status.style.display = 'none';
-        }, 3000);
+    if (status) {
+        status.textContent = message;
+        status.className = `alert alert-${type} status`;
+        status.style.display = 'block';
+        
+        if (type !== 'danger') {
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
     }
 }
 
 function formatDate(date) {
-    return new Intl.DateTimeFormat('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    }).format(date);
-}
-
-async function loadDevices() {
-    try {
-        const tabFiles = await listTabFiles();
-        const select = document.getElementById('deviceSelect');
-        select.innerHTML = '<option value="">选择设备...</option>';
-        
-        tabFiles.sort((a, b) => b.lastModified - a.lastModified);
-        
-        for (const file of tabFiles) {
-            const option = document.createElement('option');
-            option.value = file.filename;
-            option.textContent = `${file.deviceName} (${formatDate(file.lastModified)})`;
-            select.appendChild(option);
-        }
-        
-        if (tabFiles.length === 0) {
-            select.innerHTML = '<option value="">暂无设备数据</option>';
-        }
-    } catch (error) {
-        showStatus('加载设备列表失败: ' + error.message, 'danger');
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) { // 小于1分钟
+        return '刚刚';
+    } else if (diff < 3600000) { // 小于1小时
+        return Math.floor(diff / 60000) + '分钟前';
+    } else if (diff < 86400000) { // 小于24小时
+        return Math.floor(diff / 3600000) + '小时前';
+    } else {
+        return date.toLocaleString();
     }
 }
 
-async function loadTabs(filename) {
-    try {
-        const data = await downloadTabFile(filename);
-        const tabList = document.getElementById('tabList');
-        const deviceName = filename.replace(/^tabs\./, '').replace(/\.json$/, '');
-        
-        document.getElementById('currentDevice').textContent = deviceName;
-        document.getElementById('lastSync').textContent = `最后同步: ${formatDate(new Date())}`;
-        
-        if (!data.tabs || data.tabs.length === 0) {
-            tabList.innerHTML = '<div class="no-tabs">该设备暂无标签页数据</div>';
-            return;
-        }
-        
-        let html = '';
-        for (const tab of data.tabs) {
-            html += `
-                <div class="tab-item">
-                    <img src="${tab.favIconUrl || 'icon.png'}" class="tab-icon" onerror="this.src='icon.png'">
-                    <div class="tab-title">${tab.title}</div>
-                    <div class="tab-url">${tab.url}</div>
-                </div>
-            `;
-        }
-        tabList.innerHTML = html;
-        
-        showStatus(`已加载 ${data.tabs.length} 个标签页`);
-    } catch (error) {
-        showStatus('加载标签页失败: ' + error.message, 'danger');
+// 创建标签页元素
+function createTabElement(tab) {
+    const tabItem = document.createElement('div');
+    tabItem.className = 'tab-item';
+
+    const icon = document.createElement('div');
+    icon.className = 'tab-icon';
+    
+    // 如果有favicon，则设置图片
+    if (tab.favIconUrl) {
+        const img = new Image();
+        img.onload = () => {
+            icon.style.backgroundImage = `url('${tab.favIconUrl}')`;
+        };
+        img.onerror = () => {
+            icon.classList.add('default');
+        };
+        img.src = tab.favIconUrl;
+    } else {
+        icon.classList.add('default');
     }
+
+    const title = document.createElement('div');
+    title.className = 'tab-title';
+    title.textContent = tab.title;
+
+    const url = document.createElement('a');
+    url.className = 'tab-url';
+    url.href = tab.url;
+    url.textContent = tab.url;
+    url.target = '_blank';
+    url.rel = 'noopener noreferrer';
+
+    tabItem.appendChild(icon);
+    tabItem.appendChild(title);
+    tabItem.appendChild(url);
+
+    return tabItem;
 }
 
-async function deleteDevice(filename) {
-    if (!confirm('确定要删除此设备的标签页数据吗？')) {
-        return;
-    }
+// 加载标签页列表
+async function loadTabs(deviceId = 'current') {
+    const tabList = document.getElementById('tabList');
+    const deviceName = document.getElementById('currentDevice');
+    const lastSync = document.getElementById('lastSync');
+    
+    if (!tabList || !deviceName || !lastSync) return;
+    
+    tabList.innerHTML = '<div class="no-tabs">加载中...</div>';
     
     try {
-        await deleteTabFile(filename);
-        await loadDevices();
-        document.getElementById('tabList').innerHTML = '<div class="no-tabs">请选择一个设备查看其标签页</div>';
-        document.getElementById('currentDevice').textContent = '未选择设备';
-        document.getElementById('lastSync').textContent = '';
-        showStatus('设备数据已删除');
-    } catch (error) {
-        showStatus('删除设备数据失败: ' + error.message, 'danger');
-    }
-}
-
-// 事件监听
-document.addEventListener('DOMContentLoaded', () => {
-    loadDevices();
-    
-    document.getElementById('deviceSelect').addEventListener('change', (e) => {
-        const filename = e.target.value;
-        if (filename) {
-            loadTabs(filename);
+        if (deviceId === 'current') {
+            // 加载当前设备的标签页
+            const tabs = await chrome.tabs.query({});
+            deviceName.textContent = '当前设备';
+            lastSync.textContent = '实时';
+            
+            if (tabs.length === 0) {
+                tabList.innerHTML = '<div class="no-tabs">暂无标签页</div>';
+                return;
+            }
+            
+            tabList.innerHTML = '';
+            tabs.forEach(tab => {
+                tabList.appendChild(createTabElement(tab));
+            });
         } else {
-            document.getElementById('tabList').innerHTML = '<div class="no-tabs">请选择一个设备查看其标签页</div>';
-            document.getElementById('currentDevice').textContent = '未选择设备';
-            document.getElementById('lastSync').textContent = '';
+            // 从WebDAV加载其他设备的标签页
+            const config = await chrome.storage.sync.get(['webdavConfig']);
+            if (!config.webdavConfig) {
+                showStatus('请先配置WebDAV服务', 'warning');
+                return;
+            }
+            
+            // TODO: 从WebDAV加载其他设备的标签页
+            // 这里需要实现从WebDAV加载数据的逻辑
         }
-    });
+    } catch (error) {
+        console.error('加载标签页失败:', error);
+        showStatus('加载标签页失败: ' + error.message, 'danger');
+        tabList.innerHTML = '<div class="no-tabs">加载失败</div>';
+    }
+}
+
+// 初始化设备标签页
+async function initDeviceTabs() {
+    const deviceTabs = document.getElementById('deviceTabs');
+    if (!deviceTabs) return;
+    
+    try {
+        // TODO: 从WebDAV获取设备列表
+        // 这里需要实现从WebDAV获取设备列表的逻辑
+        
+        // 为设备标签添加点击事件
+        deviceTabs.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // 更新活动标签
+                deviceTabs.querySelectorAll('.nav-link').forEach(l => {
+                    l.classList.remove('active');
+                });
+                link.classList.add('active');
+                
+                // 加载对应设备的标签页
+                const deviceId = link.getAttribute('data-device-id');
+                loadTabs(deviceId);
+            });
+        });
+    } catch (error) {
+        console.error('初始化设备标签失败:', error);
+        showStatus('初始化设备标签失败: ' + error.message, 'danger');
+    }
+}
+
+// 等待DOM加载完成后初始化
+document.addEventListener('DOMContentLoaded', () => {
+    initDeviceTabs();
+    loadTabs('current');
 }); 

@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>书签同步</title>
-    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
     <style>
         body {
             padding: 20px;
             min-width: 400px;
+            background-color: #f8f9fa;
         }
         .btn-container {
             display: flex;
@@ -23,10 +24,48 @@
             margin-top: 15px;
             display: none;
         }
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            padding: 10px 20px;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+        .nav-tabs .nav-link:hover {
+            border-color: transparent;
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            font-weight: bold;
+            border-bottom: 2px solid #0d6efd;
+            margin-bottom: -2px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link" href="md-edit.html">md编辑器</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="tabs.html">标签页同步</a>
+            </li>
+            <li class="nav-item"></li>
+                <a class="nav-link active" href="bookmarks.html">书签同步</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="options.html">设置</a>
+            </li>
+        </ul>
+
+        <h2 class="mb-4">书签同步</h2>
+
         <div class="btn-container">
             <button id="syncBtn" class="btn btn-primary">
                 同步书签
@@ -46,6 +85,7 @@
     </div>
 
     <script src="js/crypto-js.min.js"></script>
-    <script type="module" src="js/bookmarks-ui.js"></script>
+    <script src="js/bookmarks-core.js"></script>
+    <script src="js/bookmarks-ui.js"></script>
 </body>
 </html>

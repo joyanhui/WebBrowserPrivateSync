@@ -3,18 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>标签页同步管理</title>
-    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/bootstrap5.3.3.min.css" rel="stylesheet">
     <style>
         body {
             padding: 20px;
             min-width: 800px;
             background-color: #f8f9fa;
-        }
-        .device-selector {
-            margin-bottom: 20px;
-        }
-        .device-selector select {
-            min-width: 200px;
         }
         .tab-list {
             background: white;
@@ -35,15 +29,28 @@
             width: 16px;
             height: 16px;
             margin-right: 10px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+        }
+        .tab-icon.default {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iIzZjNzU3ZCIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBkPSJNMTQuMjUgMi41SDEuNzVhLjI1LjI1IDAgMCAwLS4yNS4yNXYxMC41YzAgLjEzOC4xMTIuMjUuMjUuMjVoMTIuNWEuMjUuMjUgMCAwIDAgLjI1LS4yNVYyLjc1YS4yNS4yNSAwIDAgMC0uMjUtLjI1ek0xLjc1IDFhMS43NSAxLjc1IDAgMCAwLTEuNzUgMS43NXYxMC41QTEuNzUgMS43NSAwIDAgMCAxLjc1IDE1aDEyLjVhMS43NSAxLjc1IDAgMCAwIDEuNzUtMS43NVYyLjc1QTEuNzUgMS43NSAwIDAgMCAxNC4yNSAxSDEuNzV6Ii8+PC9zdmc+');
         }
         .tab-title {
             flex-grow: 1;
             margin-right: 15px;
+            color: #333;
+            text-decoration: none;
         }
         .tab-url {
-            color: #6c757d;
+            color: #0d6efd;
             font-size: 0.9em;
             word-break: break-all;
+            text-decoration: none;
+        }
+        .tab-url:hover {
+            text-decoration: underline;
         }
         .status {
             margin-top: 15px;
@@ -67,31 +74,83 @@
             padding: 20px;
             color: #6c757d;
         }
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            padding: 10px 20px;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+        .nav-tabs .nav-link:hover {
+            border-color: transparent;
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            font-weight: bold;
+            border-bottom: 2px solid #0d6efd;
+            margin-bottom: -2px;
+        }
+        .nav-tabs.sub-tabs {
+            margin-top: -10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .nav-tabs.sub-tabs .nav-link.active {
+            border-bottom-width: 1px;
+        }
+        .tab-content {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- 主导航 -->
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link" href="md-edit.html">md编辑器</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="tabs.html">标签页同步</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="bookmarks.html">书签同步</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="options.html">设置</a>
+            </li>
+        </ul>
+
         <h2 class="mb-4">标签页同步管理</h2>
         
-        <div class="device-selector">
-            <select id="deviceSelect" class="form-select">
-                <option value="">加载设备列表中...</option>
-            </select>
-        </div>
+        <!-- 设备选择标签页 -->
+        <ul class="nav nav-tabs sub-tabs" id="deviceTabs">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-device-id="current">当前设备</a>
+            </li>
+            <!-- 其他设备的标签页会通过JavaScript动态添加 -->
+        </ul>
 
-        <div class="tab-list">
-            <div class="device-info">
-                <div class="device-name" id="currentDevice">未选择设备</div>
-                <div class="last-sync" id="lastSync"></div>
-            </div>
-            <div id="tabList">
-                <div class="no-tabs">请选择一个设备查看其标签页</div>
+        <div class="tab-content">
+            <div class="tab-list">
+                <div class="device-info">
+                    <div class="device-name" id="currentDevice">未选择设备</div>
+                    <div class="last-sync" id="lastSync"></div>
+                </div>
+                <div id="tabList">
+                    <div class="no-tabs">加载标签页数据中...</div>
+                </div>
             </div>
         </div>
 
         <div id="status" class="alert status"></div>
     </div>
 
+    <script src="js/crypto-js.min.js"></script>
     <script src="js/tabs.js"></script>
 </body>
 </html> 
