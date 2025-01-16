@@ -4,124 +4,157 @@ importScripts('../js/crypto-js.min.js', '../js/bookmarks-core.js');
 let syncTimerId = null;
 let tabsSyncTimerId = null;
 
-// 检查并启动自动同步
-async function checkAndStartAutoSync() {
+// 检查是否启用了自动同步
+async function isAutoSyncEnabled() {
     try {
-        // 清理现有的定时器
-        if (syncTimerId) {
-            clearInterval(syncTimerId);
-            syncTimerId = null;
-        }
-        if (tabsSyncTimerId) {
-            clearInterval(tabsSyncTimerId);
-            tabsSyncTimerId = null;
-        }
-
-        const config = await chrome.storage.sync.get(['bookmarkConfig']);
-        if (!config.bookmarkConfig) return;
-
-        // 启动书签自动同步
-        if (config.bookmarkConfig.enable_auto_sync) {
-            const interval = Math.max(30, config.bookmarkConfig.sync_interval || 300) * 1000;
-            syncTimerId = setInterval(async () => {
-                try {
-                    if (!config.bookmarkConfig?.sync_path) {
-                        console.warn('未配置同步路径');
-                        return;
-                    }
-
-                    const targetFolder = await BookmarksCore.findBookmarkFolder(config.bookmarkConfig.sync_path);
-                    await BookmarksCore.syncBookmarks(targetFolder);
-                    console.log('书签同步成功');
-                } catch (error) {
-                    console.error('自动同步书签失败:', error);
-                }
-            }, interval);
-        }
-
-        // 启动标签页自动同步
-        if (config.bookmarkConfig.enable_tabs_sync) {
-            const interval = Math.max(30, config.bookmarkConfig.tabs_sync_interval || 30) * 1000;
-            tabsSyncTimerId = setInterval(async () => {
-                try {
-                    await syncTabs();
-                } catch (error) {
-                    console.error('自动同步标签页失败:', error);
-                }
-            }, interval);
-        }
+        const { bookmarkConfig } = await chrome.storage.sync.get('bookmarkConfig');
+        return bookmarkConfig?.enable_auto_sync === true;
     } catch (error) {
-        console.error('启动自动同步失败:', error);
+        console.error('检查自动同步状态失败:', error);
+        return false;
     }
 }
 
-// 同步标签页
-async function syncTabs() {
+// 检查是否启用了标签页同步
+async function isTabsSyncEnabled() {
     try {
-        const config = await chrome.storage.sync.get(['webdavConfig', 'bookmarkConfig']);
-        if (!config.webdavConfig?.url || !config.bookmarkConfig?.device_name) {
-            console.warn('WebDAV配置或设备名未设置');
+        const { bookmarkConfig } = await chrome.storage.sync.get('bookmarkConfig');
+        return bookmarkConfig?.enable_tabs_sync === true;
+    } catch (error) {
+        console.error('检查标签页同步状态失败:', error);
+        return false;
+    }
+}
+
+// 获取同步间隔
+async function getSyncInterval() {
+    try {
+        const { bookmarkConfig } = await chrome.storage.sync.get('bookmarkConfig');
+        return (bookmarkConfig?.sync_interval || 300) * 1000; // 转换为毫秒
+    } catch (error) {
+        console.error('获取同步间隔失败:', error);
+        return 300000; // 默认5分钟
+    }
+}
+
+// 获取标签页同步间隔
+async function getTabsSyncInterval() {
+    try {
+        const { bookmarkConfig } = await chrome.storage.sync.get('bookmarkConfig');
+        return (bookmarkConfig?.tabs_sync_interval || 30) * 1000; // 转换为毫秒
+    } catch (error) {
+        console.error('获取标签页同步间隔失败:', error);
+        return 30000; // 默认30秒
+    }
+}
+
+// 书签同步定时器
+let bookmarkSyncTimer = null;
+
+// 标签页同步定时器
+let tabsSyncTimer = null;
+
+// 启动书签同步
+async function startBookmarkSync() {
+    if (bookmarkSyncTimer) {
+        clearInterval(bookmarkSyncTimer);
+    }
+
+    const enabled = await isAutoSyncEnabled();
+    if (!enabled) {
+        console.log('书签自动同步已禁用');
+        return;
+    }
+
+    const interval = await getSyncInterval();
+    console.log(`启动书签自动同步，间隔: ${interval/1000}秒`);
+    
+    bookmarkSyncTimer = setInterval(async () => {
+        // 重新检查是否启用
+        const stillEnabled = await isAutoSyncEnabled();
+        if (!stillEnabled) {
+            console.log('书签自动同步已禁用，停止同步');
+            clearInterval(bookmarkSyncTimer);
+            bookmarkSyncTimer = null;
             return;
         }
 
-        // 获取当前所有标签页
-        const tabs = await chrome.tabs.query({});
-        const tabsData = tabs.map(tab => ({
-            url: tab.url,
-            title: tab.title,
-            favIconUrl: tab.favIconUrl
-        }));
-
-        // 准备要上传的数据
-        const uploadData = {
-            device_name: config.bookmarkConfig.device_name,
-            tabs: tabsData,
-            last_sync: new Date().toISOString()
-        };
-
-        // 加密数据（如果启用）
-        let finalData;
-        if (config.webdavConfig.enable_aes && config.webdavConfig.aes_key) {
-            const jsonStr = JSON.stringify(uploadData);
-            finalData = CryptoJS.AES.encrypt(jsonStr, config.webdavConfig.aes_key).toString();
-        } else {
-            finalData = JSON.stringify(uploadData, null, 2);
+        try {
+            // 执行同步
+            await chrome.runtime.sendMessage({ action: 'syncBookmarks' });
+            console.log('书签自动同步完成');
+        } catch (error) {
+            console.error('书签自动同步失败:', error);
         }
+    }, interval);
+}
 
-        // 确保URL以/结尾
-        const baseUrl = config.webdavConfig.url.replace(/\/$/, '');
-        const filename = `tabs.${config.bookmarkConfig.device_name}.json`;
-        
-        // 上传到WebDAV
-        const response = await fetch(`${baseUrl}/${filename}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': 'Basic ' + btoa(`${config.webdavConfig.username}:${config.webdavConfig.password}`),
-                'Content-Type': 'application/json'
-            },
-            body: finalData
-        });
-
-        if (!response.ok) {
-            throw new Error(`上传失败: ${response.status} ${response.statusText}`);
-        }
-
-        console.log('标签页同步成功');
-    } catch (error) {
-        console.error('同步标签页失败:', error);
-        throw error;
+// 启动标签页同步
+async function startTabsSync() {
+    if (tabsSyncTimer) {
+        clearInterval(tabsSyncTimer);
     }
+
+    const enabled = await isTabsSyncEnabled();
+    if (!enabled) {
+        console.log('标签页自动同步已禁用');
+        return;
+    }
+
+    const interval = await getTabsSyncInterval();
+    console.log(`启动标签页自动同步，间隔: ${interval/1000}秒`);
+    
+    tabsSyncTimer = setInterval(async () => {
+        // 重新检查是否启用
+        const stillEnabled = await isTabsSyncEnabled();
+        if (!stillEnabled) {
+            console.log('标签页自动同步已禁用，停止同步');
+            clearInterval(tabsSyncTimer);
+            tabsSyncTimer = null;
+            return;
+        }
+
+        try {
+            // 执行同步
+            await chrome.runtime.sendMessage({ action: 'syncTabs' });
+            console.log('标签页自动同步完成');
+        } catch (error) {
+            console.error('标签页自动同步失败:', error);
+        }
+    }, interval);
 }
 
 // 监听配置变更
-chrome.storage.onChanged.addListener((changes, namespace) => {
+chrome.storage.onChanged.addListener(async (changes, namespace) => {
     if (namespace === 'sync' && changes.bookmarkConfig) {
-        checkAndStartAutoSync();
+        const newConfig = changes.bookmarkConfig.newValue;
+        const oldConfig = changes.bookmarkConfig.oldValue;
+
+        // 检查书签自动同步设置是否改变
+        if (newConfig?.enable_auto_sync !== oldConfig?.enable_auto_sync ||
+            newConfig?.sync_interval !== oldConfig?.sync_interval) {
+            console.log('书签同步配置已更改，重新启动同步服务');
+            await startBookmarkSync();
+        }
+
+        // 检查标签页同步设置是否改变
+        if (newConfig?.enable_tabs_sync !== oldConfig?.enable_tabs_sync ||
+            newConfig?.tabs_sync_interval !== oldConfig?.tabs_sync_interval) {
+            console.log('标签页同步配置已更改，重新启动同步服务');
+            await startTabsSync();
+        }
     }
 });
 
-// 初始化时检查自动同步设置
-checkAndStartAutoSync();
+// 初始化同步服务
+async function initSyncServices() {
+    console.log('初始化同步服务...');
+    await startBookmarkSync();
+    await startTabsSync();
+}
+
+// 启动服务
+initSyncServices();
 
 // 格式化书签数据
 function formatBookmarkData(node) {

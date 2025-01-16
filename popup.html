@@ -73,6 +73,8 @@
             border-radius: 6px;
             font-weight: 500;
             transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 10px;
         }
         .btn-setup:hover {
             background: #0b5ed7;
@@ -87,6 +89,36 @@
             font-size: 0.9em;
             background: white;
             border: 1px solid rgba(13, 110, 253, 0.2);
+        }
+        .features-container {
+            display: none;
+            text-align: center;
+        }
+        .features-container.show {
+            display: block;
+        }
+        .feature-btn {
+            background: white;
+            color: #0d6efd;
+            border: 1px solid #0d6efd;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .feature-btn:hover {
+            background: #0d6efd;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
+        }
+        .feature-btn i {
+            margin-right: 8px;
         }
     </style>
 </head>
@@ -114,8 +146,20 @@
     <div id="status" class="status"></div>
     
     <div id="setupContainer" class="setup-container">
-        <button id="openOptions" class="btn btn-setup">
-            配置WebDAV服务
+        <button id="openOptions" class="btn-setup">
+            配置远程服务和其他选项
+        </button>
+    </div>
+
+    <div id="featuresContainer" class="features-container">
+        <button class="feature-btn" id="openTabs">
+            <i>⧉</i>标签页同步
+        </button>
+        <button class="feature-btn" id="openBookmarks">
+            <i>★</i>书签同步
+        </button>
+        <button class="feature-btn" id="openMdEdit">
+            <i>✎</i>Markdown编辑
         </button>
     </div>
 
