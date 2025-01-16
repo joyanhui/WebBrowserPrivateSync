@@ -243,72 +243,86 @@ async function syncBookmarks() {
         // 查找指定路径的书签文件夹
         const targetFolder = await findBookmarkFolder(config.bookmarkConfig.sync_path);
         
-        // 从WebDAV下载书签
-        let remoteBookmarks = await downloadBookmarks();
-        
-        // 确保remoteBookmarks有正确的结构
-        if (!remoteBookmarks) {
-            remoteBookmarks = {
-                title: targetFolder.title,
-                children: []
-            };
-        } else if (!remoteBookmarks.children) {
-            remoteBookmarks.children = [];
-        }
-        
-        // 获取本地书签
-        const localBookmarks = formatBookmarkData(targetFolder);
-        
-        // 创建ID到书签的映射
-        const remoteMap = new Map();
-        const localMap = new Map();
-        
-        // 递归处理书签,构建ID映射
-        function buildBookmarkMap(bookmarks, map) {
-            if (!bookmarks) return;
+        try {
+            // 尝试从WebDAV下载书签
+            let remoteBookmarks = await downloadBookmarks();
             
-            if (bookmarks.url) {
-                map.set(bookmarks.id, bookmarks);
+            // 确保remoteBookmarks有正确的结构
+            if (!remoteBookmarks) {
+                // 如果WebDAV上没有数据文件，则以本地书签为准
+                console.log('WebDAV上没有数据文件，将上传本地书签');
+                await uploadBookmarks(targetFolder);
+                showStatus('首次同步完成，已上传本地书签', 'success');
+                return;
             }
             
-            if (bookmarks.children) {
-                for (const child of bookmarks.children) {
-                    buildBookmarkMap(child, map);
+            if (!remoteBookmarks.children) {
+                remoteBookmarks.children = [];
+            }
+            
+            // 获取本地书签
+            const localBookmarks = formatBookmarkData(targetFolder);
+            
+            // 创建ID到书签的映射
+            const remoteMap = new Map();
+            const localMap = new Map();
+            
+            // 递归处理书签,构建ID映射
+            function buildBookmarkMap(bookmarks, map) {
+                if (!bookmarks) return;
+                
+                if (bookmarks.url) {
+                    map.set(bookmarks.id, bookmarks);
+                }
+                
+                if (bookmarks.children) {
+                    for (const child of bookmarks.children) {
+                        buildBookmarkMap(child, map);
+                    }
                 }
             }
-        }
-        
-        buildBookmarkMap(remoteBookmarks, remoteMap);
-        buildBookmarkMap(localBookmarks, localMap);
-        
-        // 处理删除的书签
-        for (const [id, localBookmark] of localMap) {
-            if (!remoteMap.has(id)) {
-                // 本地存在但远程不存在的书签,需要上传到远程
-                if (localBookmark.url) {
-                    remoteBookmarks.children.push(localBookmark);
+            
+            buildBookmarkMap(remoteBookmarks, remoteMap);
+            buildBookmarkMap(localBookmarks, localMap);
+            
+            // 处理删除的书签
+            for (const [id, localBookmark] of localMap) {
+                if (!remoteMap.has(id)) {
+                    // 本地存在但远程不存在的书签,需要上传到远程
+                    if (localBookmark.url) {
+                        remoteBookmarks.children.push(localBookmark);
+                    }
                 }
             }
-        }
-        
-        // 处理新增的书签
-        for (const [id, remoteBookmark] of remoteMap) {
-            if (!localMap.has(id)) {
-                // 远程存在但本地不存在的书签,需要在本地创建
-                if (remoteBookmark.url) {
-                    await chrome.bookmarks.create({
-                        parentId: targetFolder.id,
-                        title: remoteBookmark.title,
-                        url: remoteBookmark.url
-                    });
+            
+            // 处理新增的书签
+            for (const [id, remoteBookmark] of remoteMap) {
+                if (!localMap.has(id)) {
+                    // 远程存在但本地不存在的书签,需要在本地创建
+                    if (remoteBookmark.url) {
+                        await chrome.bookmarks.create({
+                            parentId: targetFolder.id,
+                            title: remoteBookmark.title,
+                            url: remoteBookmark.url
+                        });
+                    }
                 }
             }
+            
+            // 上传更新后的书签到WebDAV
+            await uploadBookmarks(targetFolder);
+            
+            showStatus('书签同步成功', 'success');
+        } catch (error) {
+            if (error.message.includes('404') || error.message.includes('下载失败')) {
+                // 如果是因为文件不存在导致的错误，上传本地书签
+                console.log('WebDAV上没有数据文件，将上传本地书签');
+                await uploadBookmarks(targetFolder);
+                showStatus('首次同步完成，已上传本地书签', 'success');
+                return;
+            }
+            throw error; // 其他错误继续抛出
         }
-        
-        // 上传更新后的书签到WebDAV
-        await uploadBookmarks(targetFolder);
-        
-        showStatus('书签同步成功', 'success');
     } catch (error) {
         console.error('同步书签失败:', error);
         showStatus('同步失败: ' + error.message, 'danger');

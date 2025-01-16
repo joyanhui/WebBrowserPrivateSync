@@ -189,4 +189,14 @@ async function selectBookmarkFolder() {
     } catch (error) {
         console.error('Error selecting bookmark folder:', error);
     }
-} 
+}
+
+// 监听配置变更
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'sync' && changes.bookmarkConfig) {
+        const newConfig = changes.bookmarkConfig.newValue;
+        if (newConfig && newConfig.sync_path) {
+            document.getElementById('selected-path').textContent = newConfig.sync_path;
+        }
+    }
+}); 
